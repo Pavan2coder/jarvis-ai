@@ -43,6 +43,19 @@ class UIHandler(BaseHTTPRequestHandler):
             self._send_json(ui_state)
         elif self.path == "/stats":
             self._send_json(system_ops.get_live_stats())
+        elif self.path.startswith("/command?"):
+            from urllib.parse import urlparse, parse_qs
+            import threading
+            import commands
+            query = parse_qs(urlparse(self.path).query)
+            text = query.get("text", [""])[0]
+            if text:
+                set_ui("thinking", message="Processing command...", command=text)
+                threading.Thread(target=commands.handle_command, args=(text,), daemon=True).start()
+                self._send_json({"status": "ok", "message": f"Command '{text}' queued."})
+            else:
+                self.send_response(400)
+                self.end_headers()
         elif self.path in ("/", "/hud"):
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
