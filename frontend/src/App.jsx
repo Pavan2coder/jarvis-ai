@@ -244,7 +244,7 @@ const App = () => {
             </div>
             <div className="gauges">
               <div className="gauge">
-                <svg width="72" height="72" viewBox="0 0 72 72">
+                <svg className="radial-gauge" width="72" height="72" viewBox="0 0 72 72">
                   <circle className="track" cx="36" cy="36" r="30" fill="none" strokeWidth="5" />
                   <circle
                     className="fill"
@@ -267,7 +267,7 @@ const App = () => {
               </div>
               
               <div className="gauge">
-                <svg width="72" height="72" viewBox="0 0 72 72">
+                <svg className="radial-gauge" width="72" height="72" viewBox="0 0 72 72">
                   <circle className="track" cx="36" cy="36" r="30" fill="none" strokeWidth="5" />
                   <circle
                     className="fill"
@@ -290,7 +290,7 @@ const App = () => {
               </div>
 
               <div className="gauge">
-                <svg width="72" height="72" viewBox="0 0 72 72">
+                <svg className="radial-gauge" width="72" height="72" viewBox="0 0 72 72">
                   <circle className="track" cx="36" cy="36" r="30" fill="none" strokeWidth="5" />
                   <circle
                     className="fill"

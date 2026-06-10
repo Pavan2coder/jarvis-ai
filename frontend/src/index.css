@@ -166,7 +166,7 @@ body::after {
 /* Gauges */
 .gauges { display: flex; justify-content: space-around; align-items: flex-start; }
 .gauge { text-align: center; width: 84px; }
-.gauge svg { transform: rotate(-90deg); filter: drop-shadow(0 0 5px rgba(var(--glow-rgb), .5)); }
+.gauge svg.radial-gauge { transform: rotate(-90deg); filter: drop-shadow(0 0 5px rgba(var(--glow-rgb), .5)); }
 .gauge .track { stroke: rgba(var(--glow-rgb), .12); }
 .gauge .fill { stroke: var(--blue); transition: stroke-dashoffset .6s ease, stroke .4s; stroke-linecap: round; }
 .gauge .num { font-family: 'Orbitron'; font-size: 1rem; fill: #fff; transform: rotate(90deg); }
