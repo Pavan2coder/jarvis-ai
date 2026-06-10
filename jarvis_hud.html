@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>J.A.R.V.I.S</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+:root{
+  --blue:#3ad1ff; --cyan:#00f0ff; --deep:#0a84ff;
+  --gold:#ffcf4d; --green:#39ff88; --orange:#ff9d2f; --red:#ff4757;
+  --ink:#020912; --glass:rgba(8,28,46,.42); --line:rgba(58,209,255,.22);
+  --txt:#bfe9ff;
+}
+
+html,body{
+  width:100%; height:100%; background:var(--ink); overflow:hidden;
+  font-family:'Rajdhani',sans-serif; color:var(--txt); cursor:crosshair;
+  user-select:none;
+}
+
+/* ───── backgrounds ───── */
+canvas#bg{ position:fixed; inset:0; z-index:0; }
+
+.grid{
+  position:fixed; inset:0; z-index:1; opacity:.35; pointer-events:none;
+  background-image:
+    linear-gradient(rgba(58,209,255,.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(58,209,255,.06) 1px, transparent 1px);
+  background-size:46px 46px;
+  mask-image:radial-gradient(circle at 50% 50%, #000 30%, transparent 78%);
+  -webkit-mask-image:radial-gradient(circle at 50% 50%, #000 30%, transparent 78%);
+}
+.vignette{
+  position:fixed; inset:0; z-index:2; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,.65) 100%);
+}
+body::after{ /* scanlines */
+  content:''; position:fixed; inset:0; z-index:60; pointer-events:none;
+  background:repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.06) 3px, rgba(0,0,0,.06) 4px);
+}
+
+/* ───── boot overlay ───── */
+#boot{
+  position:fixed; inset:0; z-index:300; background:var(--ink);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:22px; transition:opacity .9s ease; font-family:'Share Tech Mono',monospace;
+}
+#boot.gone{ opacity:0; pointer-events:none; }
+#boot .bigring{ width:120px; height:120px; border-radius:50%;
+  border:2px solid rgba(58,209,255,.25); border-top-color:var(--cyan);
+  animation:spin 1s linear infinite; box-shadow:0 0 30px rgba(0,240,255,.4); }
+#boot .btitle{ font-family:'Orbitron'; letter-spacing:10px; font-size:1.6rem;
+  color:#fff; text-shadow:0 0 24px var(--cyan); }
+#bootlog{ font-size:.72rem; color:var(--blue); min-height:90px; width:320px;
+  line-height:1.9; opacity:.85; }
+#bootbar{ width:300px; height:3px; background:rgba(58,209,255,.15); overflow:hidden; }
+#bootbar i{ display:block; height:100%; width:0%;
+  background:linear-gradient(90deg,var(--deep),var(--cyan)); box-shadow:0 0 12px var(--cyan); }
+
+/* ───── layout ───── */
+.hud{ position:relative; z-index:10; width:100vw; height:100vh;
+  display:grid; grid-template-rows:54px 1fr 40px;
+  grid-template-columns:300px 1fr 300px; gap:14px; padding:16px 22px; }
+
+/* top bar */
+.top{ grid-column:1/-1; display:flex; align-items:center; justify-content:space-between;
+  border-bottom:1px solid var(--line); padding-bottom:8px; }
+.brand{ font-family:'Orbitron'; font-weight:900; font-size:1.5rem; letter-spacing:9px;
+  color:#fff; text-shadow:0 0 18px var(--cyan),0 0 40px rgba(0,240,255,.35); }
+.brand b{ color:var(--gold); }
+.topmeta{ display:flex; gap:30px; font-size:.74rem; letter-spacing:2px; font-family:'Share Tech Mono'; }
+.topmeta .k{ opacity:.5; } .topmeta .v{ color:#fff; }
+
+/* panels */
+.panel{ display:flex; flex-direction:column; gap:14px; min-height:0; }
+.card{ background:var(--glass); border:1px solid var(--line); padding:14px;
+  backdrop-filter:blur(6px); position:relative;
+  clip-path:polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
+.card::before{ content:''; position:absolute; top:0; left:0; width:24px; height:2px; background:var(--cyan); box-shadow:0 0 8px var(--cyan); }
+.ttl{ font-family:'Orbitron'; font-size:.6rem; letter-spacing:3px; color:var(--blue);
+  opacity:.7; margin-bottom:12px; text-transform:uppercase; }
+
+/* gauges */
+.gauges{ display:flex; justify-content:space-around; align-items:flex-start; }
+.gauge{ text-align:center; width:84px; }
+.gauge svg{ transform:rotate(-90deg); filter:drop-shadow(0 0 5px rgba(0,240,255,.5)); }
+.gauge .track{ stroke:rgba(58,209,255,.12); }
+.gauge .fill{ stroke:var(--cyan); transition:stroke-dashoffset .6s ease, stroke .4s; stroke-linecap:round; }
+.gauge .num{ font-family:'Orbitron'; font-size:1rem; fill:#fff; transform:rotate(90deg); }
+.gauge .lbl{ font-size:.62rem; letter-spacing:2px; opacity:.65; margin-top:4px; }
+.gauge .sub{ font-size:.56rem; opacity:.45; font-family:'Share Tech Mono'; min-height:.8rem; }
+
+/* center / reactor */
+.center{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px; position:relative; }
+.reactor{ position:relative; width:380px; height:380px; display:flex; align-items:center; justify-content:center; }
+.reactor canvas{ position:absolute; inset:0; }
+.rtext{ position:relative; z-index:5; font-family:'Orbitron'; font-weight:700;
+  font-size:.8rem; letter-spacing:4px; color:#fff; text-shadow:0 0 18px var(--cyan); }
+
+.status{ text-align:center; }
+.status .lab{ font-size:.62rem; letter-spacing:5px; opacity:.45; font-family:'Share Tech Mono'; }
+.status .big{ font-family:'Orbitron'; font-weight:700; font-size:1.5rem; letter-spacing:6px;
+  color:#fff; text-shadow:0 0 22px var(--cyan); transition:.3s; min-height:1.8rem; }
+.status .big.idle{ color:#fff; text-shadow:0 0 18px var(--blue); }
+.status .big.active{ color:var(--green); text-shadow:0 0 24px var(--green); }
+.status .big.listening{ color:var(--gold); text-shadow:0 0 24px var(--gold); }
+.status .big.thinking{ color:var(--orange); text-shadow:0 0 24px var(--orange); }
+.status .big.speaking{ color:var(--cyan); text-shadow:0 0 24px var(--cyan); }
+
+.wave{ display:flex; align-items:center; gap:3px; height:46px; }
+.wave i{ width:3px; height:4px; border-radius:2px; background:var(--cyan);
+  box-shadow:0 0 6px var(--cyan); transition:height .08s ease, background .3s; }
+
+/* transcript */
+.bubble{ border:1px solid var(--line); padding:9px 13px; margin-bottom:8px;
+  font-size:.85rem; line-height:1.4; word-break:break-word; background:rgba(58,209,255,.04); }
+.bubble .tag{ display:block; font-family:'Share Tech Mono'; font-size:.56rem; letter-spacing:3px; opacity:.5; margin-bottom:4px; }
+.bubble.you{ border-left:3px solid var(--gold); }
+.bubble.jar{ border-left:3px solid var(--green); color:#d6fff0; }
+
+/* modules / log */
+.mod{ display:flex; justify-content:space-between; font-size:.78rem; padding:3px 0; letter-spacing:1px; }
+.mod .on{ color:var(--green); } .mod .off{ color:#5b7184; }
+.dot{ display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 6px var(--green); margin-right:6px; }
+.dot.off{ background:#445; box-shadow:none; }
+#log{ font-family:'Share Tech Mono'; font-size:.64rem; line-height:1.85; opacity:.8;
+  overflow:hidden; flex:1; }
+#log div{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.grow{ flex:1; min-height:0; display:flex; flex-direction:column; }
+
+/* badge */
+.badge{ font-family:'Share Tech Mono'; font-size:.66rem; letter-spacing:3px; padding:5px 16px;
+  border:1px solid rgba(57,255,136,.4); color:var(--green); opacity:0; transition:opacity .4s;
+  background:rgba(57,255,136,.06); }
+.badge.show{ opacity:1; }
+
+/* bottom ticker */
+.bottom{ grid-column:1/-1; border-top:1px solid var(--line); display:flex; align-items:center;
+  overflow:hidden; font-family:'Share Tech Mono'; font-size:.64rem; letter-spacing:2px; opacity:.55; }
+.bottom .tick{ white-space:nowrap; animation:scroll 28s linear infinite; }
+
+/* corners */
+.cn{ position:fixed; width:46px; height:46px; z-index:40; }
+.cn.tl{ top:12px; left:12px; border-top:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+.cn.tr{ top:12px; right:12px; border-top:2px solid var(--cyan); border-right:2px solid var(--cyan); }
+.cn.bl{ bottom:12px; left:12px; border-bottom:2px solid var(--cyan); border-left:2px solid var(--cyan); }
+.cn.br{ bottom:12px; right:12px; border-bottom:2px solid var(--cyan); border-right:2px solid var(--cyan); }
+
+@keyframes spin{ to{ transform:rotate(360deg); } }
+@keyframes scroll{ from{ transform:translateX(100%);} to{ transform:translateX(-100%);} }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+<div class="grid"></div>
+<div class="vignette"></div>
+<div class="cn tl"></div><div class="cn tr"></div><div class="cn bl"></div><div class="cn br"></div>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="bigring"></div>
+  <div class="btitle">J.A.R.V.I.S</div>
+  <div id="bootlog"></div>
+  <div id="bootbar"><i></i></div>
+</div>
+
+<div class="hud">
+
+  <!-- TOP -->
+  <div class="top">
+    <div class="brand">J.A.R.V.I.<b>S</b></div>
+    <div class="topmeta">
+      <span><span class="k">TIME</span> <span class="v" id="clock">--:--:--</span></span>
+      <span><span class="k">DATE</span> <span class="v" id="date">--</span></span>
+      <span><span class="k">CORE</span> <span class="v" style="color:var(--green)">ONLINE</span></span>
+      <span><span class="k">LINK</span> <span class="v" id="link" style="color:var(--gold)">…</span></span>
+    </div>
+  </div>
+
+  <!-- LEFT -->
+  <div class="panel">
+    <div class="card">
+      <div class="ttl">// Vitals</div>
+      <div class="gauges">
+        <div class="gauge">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="track" cx="36" cy="36" r="30" fill="none" stroke-width="5"/>
+            <circle class="fill" id="g-cpu" cx="36" cy="36" r="30" fill="none" stroke-width="5"
+                    stroke-dasharray="188.5" stroke-dashoffset="188.5"/>
+            <text class="num" id="t-cpu" x="36" y="41" text-anchor="middle">--</text>
+          </svg>
+          <div class="lbl">CPU</div><div class="sub">&nbsp;</div>
+        </div>
+        <div class="gauge">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="track" cx="36" cy="36" r="30" fill="none" stroke-width="5"/>
+            <circle class="fill" id="g-ram" cx="36" cy="36" r="30" fill="none" stroke-width="5"
+                    stroke-dasharray="188.5" stroke-dashoffset="188.5" stroke="var(--gold)"/>
+            <text class="num" id="t-ram" x="36" y="41" text-anchor="middle">--</text>
+          </svg>
+          <div class="lbl">MEM</div><div class="sub" id="s-ram">&nbsp;</div>
+        </div>
+        <div class="gauge">
+          <svg width="72" height="72" viewBox="0 0 72 72">
+            <circle class="track" cx="36" cy="36" r="30" fill="none" stroke-width="5"/>
+            <circle class="fill" id="g-gpu" cx="36" cy="36" r="30" fill="none" stroke-width="5"
+                    stroke-dasharray="188.5" stroke-dashoffset="188.5" stroke="var(--green)"/>
+            <text class="num" id="t-gpu" x="36" y="41" text-anchor="middle">--</text>
+          </svg>
+          <div class="lbl">GPU</div><div class="sub" id="s-gpu">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">// Modules</div>
+      <div class="mod"><span><span class="dot"></span>SPEECH RECOGNITION</span><span class="on">ON</span></div>
+      <div class="mod"><span><span class="dot"></span>TEXT&#8209;TO&#8209;SPEECH</span><span class="on">ON</span></div>
+      <div class="mod"><span><span class="dot"></span>CLAP DETECTION</span><span class="on">ON</span></div>
+      <div class="mod"><span><span class="dot"></span>SYSTEM CONTROL</span><span class="on">ON</span></div>
+      <div class="mod"><span><span class="dot"></span>GEMINI AI BRAIN</span><span class="on">ON</span></div>
+      <div class="mod"><span><span class="dot"></span>BATTERY</span><span class="on" id="m-bat">--</span></div>
+    </div>
+
+    <div class="card grow">
+      <div class="ttl">// Activity Log</div>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="center">
+    <div class="reactor">
+      <canvas id="reactor" width="380" height="380"></canvas>
+      <div class="rtext" id="rtext">JARVIS</div>
+    </div>
+    <div class="badge" id="badge">── VOICE ACTIVATED ──</div>
+    <div class="status">
+      <div class="lab">// SYSTEM STATUS</div>
+      <div class="big idle" id="status">STANDING BY</div>
+    </div>
+    <div class="wave" id="wave"></div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="panel">
+    <div class="card">
+      <div class="ttl">// Conversation</div>
+      <div class="bubble you"><span class="tag">YOU SAID</span><span id="cmd">—</span></div>
+      <div class="bubble jar"><span class="tag">JARVIS</span><span id="res">Awaiting input…</span></div>
+    </div>
+
+    <div class="card grow">
+      <div class="ttl">// Command Reference</div>
+      <div style="font-size:.78rem; line-height:2.05; opacity:.85;">
+        <div>👏👏 / “Jarvis” &nbsp;→&nbsp; <b>Wake</b></div>
+        <div>“open youtube cats” &nbsp;→&nbsp; YouTube</div>
+        <div>“close youtube” &nbsp;→&nbsp; Close tab</div>
+        <div>“open notepad” / “close notepad”</div>
+        <div>“cpu / memory / gpu usage”</div>
+        <div>“search …”, “play chill”, “weather”</div>
+        <div>“battery”, “lock pc”, “screenshot”</div>
+        <div>“goodbye” &nbsp;→&nbsp; Shut down</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ttl">// Network</div>
+      <div style="font-size:.78rem; line-height:1.95;">
+        <div style="display:flex;justify-content:space-between"><span>UPLINK</span><span class="on" style="color:var(--green)">SECURE</span></div>
+        <div style="display:flex;justify-content:space-between"><span>MODE</span><span style="color:var(--blue)">LOCAL · 5050</span></div>
+        <div style="display:flex;justify-content:space-between"><span>LATENCY</span><span style="color:#fff" id="ping">— ms</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom">
+    <div class="tick" id="tick">J.A.R.V.I.S v3.0 — JUST A RATHER VERY INTELLIGENT SYSTEM • ALL SYSTEMS NOMINAL • AWAITING DIRECTIVE • STARK-CLASS PERSONAL ASSISTANT •</div>
+  </div>
+
+</div>
+
+<script>
+// ════════ particle field ════════
+const bg=document.getElementById('bg'), bx=bg.getContext('2d');
+function size(){ bg.width=innerWidth; bg.height=innerHeight; }
+size(); addEventListener('resize',size);
+const P=Array.from({length:90},()=>({x:Math.random()*innerWidth,y:Math.random()*innerHeight,
+  r:Math.random()*1.3+.3,vx:(Math.random()-.5)*.25,vy:(Math.random()-.5)*.25,a:Math.random()*.5+.1}));
+function field(){
+  bx.clearRect(0,0,bg.width,bg.height);
+  for(const p of P){ p.x+=p.vx;p.y+=p.vy;
+    if(p.x<0)p.x=bg.width; if(p.x>bg.width)p.x=0; if(p.y<0)p.y=bg.height; if(p.y>bg.height)p.y=0;
+    bx.beginPath(); bx.arc(p.x,p.y,p.r,0,7); bx.fillStyle='rgba(58,209,255,'+p.a+')'; bx.fill(); }
+  for(let i=0;i<P.length;i++) for(let j=i+1;j<P.length;j++){
+    const dx=P[i].x-P[j].x, dy=P[i].y-P[j].y, d=Math.hypot(dx,dy);
+    if(d<120){ bx.beginPath(); bx.moveTo(P[i].x,P[i].y); bx.lineTo(P[j].x,P[j].y);
+      bx.strokeStyle='rgba(58,209,255,'+(.07*(1-d/120))+')'; bx.lineWidth=.5; bx.stroke(); } }
+  requestAnimationFrame(field);
+}
+field();
+
+// ════════ arc reactor ════════
+const rc=document.getElementById('reactor'), r=rc.getContext('2d');
+const CX=190, CY=190;
+let energy=0.5, targetEnergy=0.5, hue='#3ad1ff', t0=0;
+const STATE_COLOR={idle:'#3ad1ff',active:'#39ff88',listening:'#ffcf4d',thinking:'#ff9d2f',speaking:'#00f0ff',demo:'#5b7184'};
+
+function ring(rad,width,col,alpha,dash){
+  r.beginPath(); r.arc(CX,CY,rad,0,Math.PI*2);
+  r.strokeStyle=col; r.globalAlpha=alpha; r.lineWidth=width;
+  if(dash) r.setLineDash(dash); else r.setLineDash([]);
+  r.stroke(); r.globalAlpha=1; r.setLineDash([]);
+}
+function ticks(rad,n,len,col,rot){
+  for(let i=0;i<n;i++){ const a=rot+i/n*Math.PI*2;
+    r.beginPath(); r.moveTo(CX+Math.cos(a)*rad, CY+Math.sin(a)*rad);
+    r.lineTo(CX+Math.cos(a)*(rad+len), CY+Math.sin(a)*(rad+len));
+    r.strokeStyle=col; r.globalAlpha=.6; r.lineWidth=2; r.stroke(); r.globalAlpha=1; }
+}
+function arc(rad,width,col,start,len){
+  r.beginPath(); r.arc(CX,CY,rad,start,start+len);
+  r.strokeStyle=col; r.lineWidth=width; r.stroke();
+}
+function reactor(ts){
+  const t=ts/1000; energy+=(targetEnergy-energy)*0.08;
+  r.clearRect(0,0,380,380);
+  r.shadowBlur=14; r.shadowColor=hue;
+
+  ring(150,1,'rgba(58,209,255,.25)',.5,[3,8]);
+  ticks(140,48,8,hue,t*0.15);
+  arc(132,3,hue,t*0.9,Math.PI*0.6);
+  arc(132,3,hue,t*0.9+Math.PI,Math.PI*0.4);
+  ring(120,2,hue,.5);
+  arc(108,2,hue,-t*1.3,Math.PI*1.2);
+  ticks(96,24,6,'rgba(255,255,255,.35)',-t*0.3);
+  ring(86,1.5,hue,.6,[10,6]);
+
+  // pulsing core
+  const pulse=0.85+Math.sin(t*2.4)*0.15*energy;
+  const cr=46*pulse;
+  const grd=r.createRadialGradient(CX,CY,4,CX,CY,cr);
+  grd.addColorStop(0,'#ffffff'); grd.addColorStop(.35,hue);
+  grd.addColorStop(.8,'rgba(10,60,90,.6)'); grd.addColorStop(1,'rgba(2,9,18,0)');
+  r.shadowBlur=40; r.shadowColor=hue;
+  r.beginPath(); r.arc(CX,CY,cr,0,Math.PI*2); r.fillStyle=grd; r.fill();
+  // inner triangle (reactor look)
+  r.shadowBlur=0; r.globalAlpha=.55; r.strokeStyle='rgba(255,255,255,.8)'; r.lineWidth=2;
+  r.beginPath();
+  for(let i=0;i<3;i++){ const a=t*0.4+i/3*Math.PI*2;
+    const x=CX+Math.cos(a)*26, y=CY+Math.sin(a)*26; i?r.lineTo(x,y):r.moveTo(x,y); }
+  r.closePath(); r.stroke(); r.globalAlpha=1;
+  requestAnimationFrame(reactor);
+}
+requestAnimationFrame(reactor);
+
+// ════════ waveform ════════
+const wave=document.getElementById('wave'); const NB=40;
+for(let i=0;i<NB;i++){ const b=document.createElement('i'); wave.appendChild(b); }
+let waveOn=false;
+(function anim(){
+  const bars=wave.children;
+  for(let i=0;i<bars.length;i++){
+    const h=waveOn?(Math.sin(Date.now()/110+i*.55)*.5+.5)*(28*energy+8)+4:4;
+    bars[i].style.height=h+'px';
+    bars[i].style.background=hue;
+  }
+  requestAnimationFrame(anim);
+})();
+
+// ════════ clock + ticker ════════
+function clock(){
+  const n=new Date();
+  document.getElementById('clock').textContent=n.toLocaleTimeString('en-GB');
+  document.getElementById('date').textContent=n.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'}).toUpperCase();
+}
+setInterval(clock,1000); clock();
+
+// ════════ activity log ════════
+const logEl=document.getElementById('log');
+function addLog(m,c){ const ln=document.createElement('div');
+  ln.style.color=c||'var(--blue)';
+  ln.textContent='['+new Date().toLocaleTimeString('en-GB')+'] '+m;
+  logEl.insertBefore(ln,logEl.firstChild);
+  while(logEl.children.length>14) logEl.removeChild(logEl.lastChild);
+}
+
+// ════════ gauges ════════
+const CIRC=188.5;
+function setGauge(id,txtId,pct){
+  const c=document.getElementById(id), tx=document.getElementById(txtId);
+  if(pct==null){ tx.textContent='--'; c.style.strokeDashoffset=CIRC; return; }
+  tx.textContent=Math.round(pct)+'%';
+  c.style.strokeDashoffset=CIRC*(1-pct/100);
+  // colour shift when hot
+  if(id==='g-cpu') c.style.stroke = pct>85?'var(--red)':pct>60?'var(--orange)':'var(--cyan)';
+}
+
+// ════════ state machine ════════
+const $=id=>document.getElementById(id);
+let lastStatus='',lastCmd='',lastRes='';
+const LABEL={idle:'STANDING BY',active:'ACTIVATED',listening:'LISTENING…',thinking:'PROCESSING…',speaking:'RESPONDING'};
+
+function applyState(s){
+  const st=s.status||'idle';
+  hue=STATE_COLOR[st]||'#3ad1ff';
+  targetEnergy=(st==='listening'||st==='speaking')?1:(st==='thinking'?.7:(st==='active'?.9:.45));
+  waveOn=(st==='listening'||st==='speaking');
+
+  const big=$('status'); big.className='big '+st;
+  big.textContent=LABEL[st]||st.toUpperCase();
+  $('rtext').textContent={idle:'JARVIS',active:'AWAKE',listening:'HEAR',thinking:'THINK',speaking:'SPEAK'}[st]||'JARVIS';
+
+  if(st!==lastStatus){
+    if(st==='active'){
+      const src=s.wake_source==='clap'?'👏 CLAP':(s.wake_source==='manual'?'⌨ MANUAL':'🎙 VOICE');
+      const b=$('badge'); b.textContent='── '+src+' ACTIVATED ──'; b.classList.add('show');
+      setTimeout(()=>b.classList.remove('show'),2800);
+      addLog('Activated via '+(s.wake_source||'voice'),'var(--green)');
+    }
+    if(st==='listening') addLog('Listening for command…','var(--gold)');
+    lastStatus=st;
+  }
+  if(s.command && s.command!==lastCmd){ $('cmd').textContent=s.command; addLog('CMD: '+s.command,'var(--gold)'); lastCmd=s.command; }
+  if(s.response && s.response!==lastRes){ $('res').textContent=s.response; addLog('RSP: '+s.response.slice(0,38),'var(--green)'); lastRes=s.response; }
+}
+
+function applyStats(d){
+  setGauge('g-cpu','t-cpu',d.cpu);
+  setGauge('g-ram','t-ram',d.ram);
+  setGauge('g-gpu','t-gpu',d.gpu);
+  $('s-ram').textContent = d.ram_used!=null ? d.ram_used+'/'+d.ram_total+'GB' : ' ';
+  $('s-gpu').textContent = d.gpu_mem_used!=null ? d.gpu_mem_used+'/'+d.gpu_mem_total+'MB' : (d.gpu==null?'n/a':' ');
+  $('m-bat').textContent = d.battery!=null ? d.battery+'%' : '--';
+}
+
+// ════════ polling ════════
+let offline=false;
+async function poll(){
+  const t=performance.now();
+  try{
+    const s=await (await fetch('http://localhost:5050/state')).json();
+    applyState(s);
+    $('ping').textContent=Math.round(performance.now()-t)+' ms';
+    $('link').textContent='LIVE'; $('link').style.color='var(--green)';
+    if(offline){ addLog('Reconnected to core','var(--green)'); offline=false; }
+  }catch(e){
+    hue=STATE_COLOR.demo; targetEnergy=.3; waveOn=false;
+    $('status').className='big idle'; $('status').textContent='OFFLINE';
+    $('res').textContent='Run  python jarvis.py  to connect.';
+    $('link').textContent='DOWN'; $('link').style.color='var(--red)';
+    if(!offline){ addLog('Core offline — start jarvis.py','var(--red)'); offline=true; }
+  }
+}
+async function pollStats(){
+  try{ applyStats(await (await fetch('http://localhost:5050/stats')).json()); }catch(e){}
+}
+setInterval(poll,350); poll();
+setInterval(pollStats,1500); pollStats();
+
+// ════════ boot sequence ════════
+const lines=['Initializing kernel…','Loading speech engine……OK','Calibrating microphone……OK',
+  'Mounting system control……OK','Linking Gemini neural core……OK','Arc reactor at 100%','J.A.R.V.I.S ONLINE'];
+const blog=$('bootlog'), bbar=document.querySelector('#bootbar i'); let bi=0;
+(function step(){
+  if(bi<lines.length){
+    const d=document.createElement('div'); d.textContent='> '+lines[bi];
+    d.style.color = bi===lines.length-1?'var(--green)':'var(--blue)';
+    blog.appendChild(d);
+    bbar.style.width=Math.round((bi+1)/lines.length*100)+'%';
+    bi++; setTimeout(step,320);
+  } else {
+    setTimeout(()=>{ $('boot').classList.add('gone');
+      ['System boot complete','Wake-word listener active','Clap detector armed','Awaiting directive']
+        .forEach((m,i)=>setTimeout(()=>addLog(m, i===0?'var(--green)':'var(--blue)'), i*250));
+    },550);
+  }
+})();
+</script>
+</body>
+</html>
