@@ -214,18 +214,6 @@ def handle_system_command(command):
                 speak("For exact volume levels install pycaw. Run pip install pycaw.")
             return True
 
-    # ── open an app ──
-    if command.startswith("open ") or command.startswith("launch ") or command.startswith("start "):
-        app = (command.replace("open", "", 1).replace("launch", "", 1)
-                      .replace("start", "", 1).replace("the app", "").replace("app", "").strip())
-        web_words = ("youtube", "google", "browser", "chrome browser")
-        if app and app not in config.FOLDERS and not any(w in app for w in web_words):
-            if system_ops.launch_app(app):
-                speak(f"Opening {app}.")
-            else:
-                speak(f"I couldn't open {app}.")
-            return True
-
     # ── gesture control ──
     if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]):
         import gesture_engine
@@ -238,6 +226,18 @@ def handle_system_command(command):
         speak("Stopping hand gesture control. Releasing camera.")
         gesture_engine.stop_gestures()
         return True
+
+    # ── open an app ──
+    if command.startswith("open ") or command.startswith("launch ") or command.startswith("start "):
+        app = (command.replace("open", "", 1).replace("launch", "", 1)
+                      .replace("start", "", 1).replace("the app", "").replace("app", "").strip())
+        web_words = ("youtube", "google", "browser", "chrome browser")
+        if app and app not in config.FOLDERS and not any(w in app for w in web_words):
+            if system_ops.launch_app(app):
+                speak(f"Opening {app}.")
+            else:
+                speak(f"I couldn't open {app}.")
+            return True
 
     return False
 
@@ -334,14 +334,14 @@ def handle_command(command):
             speak("Install pyautogui first. Run: pip install pyautogui")
 
     # ── Volume ──
-    elif any(w in command for w in ["volume up", "louder"]):
+    elif any(w in command for w in ["volume up", "louder", "increase volume", "raise volume", "increase the volume", "raise the volume", "turn up the volume", "turn up volume"]):
         speak("Turning it up.")
         try:
             import pyautogui
             for _ in range(5): pyautogui.press('volumeup')
         except: speak("Install pyautogui for volume control.")
 
-    elif any(w in command for w in ["volume down", "quieter", "lower volume"]):
+    elif any(w in command for w in ["volume down", "quieter", "lower volume", "decrease volume", "reduce volume", "decrease the volume", "lower the volume", "reduce the volume", "turn down the volume", "turn down volume"]):
         speak("Turning it down.")
         try:
             import pyautogui
