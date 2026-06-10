@@ -56,15 +56,47 @@ class UIHandler(BaseHTTPRequestHandler):
             else:
                 self.send_response(400)
                 self.end_headers()
-        elif self.path in ("/", "/hud"):
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
-            self.wfile.write(_hud_html().encode("utf-8"))
         else:
-            self.send_response(404)
-            self.end_headers()
+            # Serve static files from frontend/dist
+            clean_path = self.path.split('?')[0]
+            if clean_path in ("/", "/hud"):
+                clean_path = "/index.html"
+            
+            dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
+            file_path = os.path.join(dist_dir, clean_path.lstrip("/"))
+            
+            if os.path.exists(file_path) and os.path.isfile(file_path):
+                self.send_response(200)
+                ext = os.path.splitext(file_path)[1].lower()
+                mime = {
+                    ".html": "text/html",
+                    ".js": "application/javascript",
+                    ".css": "text/css",
+                    ".png": "image/png",
+                    ".jpg": "image/jpeg",
+                    ".svg": "image/svg+xml",
+                    ".ico": "image/x-icon",
+                    ".json": "application/json"
+                }.get(ext, "application/octet-stream")
+                self.send_header("Content-Type", mime)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                try:
+                    with open(file_path, "rb") as f:
+                        self.wfile.write(f.read())
+                except Exception:
+                    pass
+            else:
+                # Zero-Downtime Fallback to serve standalone jarvis_hud.html
+                if clean_path == "/index.html":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html")
+                    self.send_header("Access-Control-Allow-Origin", "*")
+                    self.end_headers()
+                    self.wfile.write(_hud_html().encode("utf-8"))
+                else:
+                    self.send_response(404)
+                    self.end_headers()
 
     def log_message(self, format, *args):
         pass  # Suppress server logs
