@@ -226,6 +226,19 @@ def handle_system_command(command):
                 speak(f"I couldn't open {app}.")
             return True
 
+    # ── gesture control ──
+    if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]):
+        import gesture_engine
+        speak("Starting hand gesture control. Initializing camera.")
+        gesture_engine.start_gestures()
+        return True
+
+    if any(w in command for w in ["stop gesture control", "disable gestures", "turn off camera", "disable gesture control"]):
+        import gesture_engine
+        speak("Stopping hand gesture control. Releasing camera.")
+        gesture_engine.stop_gestures()
+        return True
+
     return False
 
 def handle_command(command):
@@ -372,6 +385,11 @@ def handle_command(command):
     elif any(w in command for w in ["goodbye", "bye", "exit", "quit", "shutdown jarvis"]):
         speak(f"Goodbye {config.YOUR_NAME}. Jarvis signing off.")
         ui_server.set_ui("idle", message="Offline.")
+        try:
+            import gesture_engine
+            gesture_engine.stop_gestures()
+        except Exception:
+            pass
         os._exit(0)
 
     # ── Anything else → ask the Gemini AI brain ──

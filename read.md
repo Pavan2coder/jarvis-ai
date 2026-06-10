@@ -12,7 +12,7 @@ Welcome to **J.A.R.V.I.S** (Just A Rather Very Intelligent System), a voice-acti
 ### 1. Install Dependencies
 Run the following command to install the required Python libraries:
 ```bash
-pip install numpy PyAudio SpeechRecognition pyttsx3 requests psutil GPUtil pyautogui screen-brightness-control pycaw comtypes
+pip install numpy PyAudio SpeechRecognition pyttsx3 requests psutil GPUtil pyautogui screen-brightness-control pycaw comtypes opencv-python mediapipe
 ```
 
 ### 2. Configure Gemini Key
@@ -34,7 +34,19 @@ This will automatically open the UI dashboard at `http://localhost:5050` in your
 
 *   **Apps**: *"open notepad"*, *"close browser"*, *"launch vs code"*
 *   **System**: *"volume up"*, *"set volume to 50"*, *"set brightness to 80"*, *"screenshot"*
+*   **Gestures**: *"start gesture control"*, *"stop gesture control"*
 *   **Info**: *"what time is it"*, *"how is the weather"*, *"system stats"*
 *   **Media**: *"play workout music on spotify"*, *"play focus"*
 *   **PC Control**: *"lock computer"*, *"shutdown"*
 *   **General**: Just talk to ask questions like *"who was Albert Einstein?"* or *"explain quantum computing in one sentence."*
+
+---
+
+## 🖐️ Quick Gestures
+*   🖱️ **Index**: Move mouse cursor.
+*   👆 **Pinch (Thumb + Index)**: Click / Drag & Drop.
+*   ↕️ **2-Fingers Close**: Scroll up/down.
+*   ✌️ **Peace Sign**: Launch VS Code.
+*   ✊ **Fist**: Toggle mute.
+*   👍 **Thumbs Up**: Play/Pause Spotify.
+*   🖐️ **Open Palm**: Pause cursor movement (hold 1.5s to wake Jarvis).

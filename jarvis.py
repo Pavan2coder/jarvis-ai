@@ -107,6 +107,14 @@ if __name__ == "__main__":
 
     audio_engine.speak(f"Jarvis online. Good to see you, {config.YOUR_NAME}. All systems operational.")
 
+    # Boot gesture control engine if configured
+    if getattr(config, "GESTURES_ENABLED_ON_BOOT", False):
+        try:
+            import gesture_engine
+            gesture_engine.start_gestures()
+        except Exception as e:
+            print(f"  ⚠️  Could not start gesture engine on boot: {e}")
+
     # Console typing always works
     threading.Thread(target=console_loop, daemon=True).start()
 

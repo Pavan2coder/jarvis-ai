@@ -102,6 +102,26 @@ npm run build
 
 ---
 
+## 🖐️ AI Hand Gesture Control System
+
+Jarvis features an integrated hand tracking module using **OpenCV** and **MediaPipe** that turns your webcam input into a virtual mouse and gesture-based media/system controller.
+
+### Voice Commands
+*   *"start gesture control"* / *"enable gestures"* / *"turn on camera"* — Starts the gesture engine and opens your webcam.
+*   *"stop gesture control"* / *"disable gestures"* / *"turn off camera"* — Stops the gesture engine and releases your webcam resources.
+
+### Available Gestures
+*   🖱️ **Move Cursor**: Raise your **index finger** and move your hand. The mouse cursor smoothly interpolates using exponential moving average (EMA) to prevent jitter.
+*   👆 **Left Click**: **Pinch** (bring your index finger and thumb tips close together).
+*   🤏 **Drag & Drop**: **Pinch and hold** your index finger and thumb together, drag items around, and release to drop.
+*   ✌️ **Peace Sign**: Spread index and middle fingers wide to open **VS Code** (has a short cooldown).
+*   ↕️ **Scroll up/down**: Keep index and middle fingers close together, and move your hand up or down to scroll.
+*   ✊ **Fist**: Closed hand toggles **Mute** (with a cooldown).
+*   👍 **Thumbs Up**: Thumbs-up gesture plays/pauses **Spotify** media playback (with a cooldown).
+*   🖐️ **Open Palm**: Pauses mouse cursor tracking so the pointer stays still. If held for **1.5 seconds**, it triggers Jarvis voice activation (starts listening for commands).
+
+---
+
 ## ⚙️ Customization (`config.py`)
 
 You can edit `config.py` to adapt Jarvis to your personal preference:

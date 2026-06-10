@@ -120,3 +120,8 @@ jokes = [
     "How many programmers does it take to change a light bulb? None. That's a hardware problem.",
     "I told my computer I needed a break. Now it won't stop sending me Kit-Kat ads.",
 ]
+
+# 🎥 GESTURE CONTROL
+GESTURES_ENABLED_ON_BOOT = False
+CAMERA_INDEX = 0
+
