@@ -11,7 +11,7 @@ ALWAYS_LISTEN  = True
 REQUIRE_TRIGGER = True
 COMMAND_TRIGGERS = [
     # actions
-    "open", "close", "launch", "start", "kill", "shut", "shutdown", "restart",
+    "open", "close", "launch", "start", "stop", "disable", "turn", "kill", "shut", "shutdown", "restart",
     "reboot", "lock", "sleep", "play", "pause", "search", "google", "youtube",
     "spotify", "music", "song", "playlist", "screenshot", "mute", "silence",
     "volume", "louder", "quieter", "brightness", "dim",

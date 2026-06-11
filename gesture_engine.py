@@ -153,18 +153,12 @@ class GestureEngine:
                     time.sleep(0.01)
                     continue
 
-                # Check for Peace Sign (✌️) -> Open VS Code
+                # Check for Peace Sign (✌️) -> Scroll Mode (VS Code launch disabled)
                 # Index and middle are open, other fingers are closed
                 if states[1] and states[2] and not states[3] and not states[4]:
                     d_tips = math.hypot(landmarks[8].x - landmarks[12].x, landmarks[8].y - landmarks[12].y)
-                    # If fingers are spread -> Peace Sign -> VS Code
+                    # If fingers are spread -> Do nothing (disabled VS Code launch)
                     if d_tips > 0.055:
-                        now = time.time()
-                        if now - self.last_vscode_time > 4.0:
-                            self.last_vscode_time = now
-                            print("\n  ✌️ Peace Sign detected! Opening VS Code...")
-                            import commands
-                            threading.Thread(target=commands.handle_command, args=("open vscode",), daemon=True).start()
                         time.sleep(0.01)
                         continue
                     
