@@ -21,7 +21,7 @@ J.A.R.V.I.S is a futuristic, voice-controlled personal AI assistant for Windows,
     *   **PC Power Management**: Locked screen, sleep mode, and confirmation-guarded system shutdowns or restarts (which can be cancelled mid-countdown).
 *   🎵 **Spotify Controller**: Launch Spotify, search for songs/artists, or trigger themed playlists (chill, focus, workout, sleep).
 *   ⌨️ **Console Fallback**: No mic? No problem. Simply press `ENTER` in the terminal and type commands directly.
-
+Entre
 ---
 
 ## 🛠️ System Architecture
@@ -65,7 +65,6 @@ pip install numpy PyAudio SpeechRecognition pyttsx3 requests psutil GPUtil pyaut
 > pip install pipwin
 > pipwin install pyaudio
 > ```
-
 ### 2. Configure Gemini API Key
 Jarvis needs a Gemini API key to power its conversational responses.
 1. Get a free API Key from [Google AI Studio](https://aistudio.google.com/).
@@ -131,3 +130,35 @@ You can edit `config.py` to adapt Jarvis to your personal preference:
 *   `APPS`: Dictionary mapping spoken app names to target executable commands.
 *   `FOLDERS`: Paths pointing to your localized system directories.
 *   `SPOTIFY_PLAYLISTS`: Connect your favorite Spotify playlist links for direct access.
+
+---
+
+## 🎨 Frontend Architecture
+
+The Jarvis HUD interface is structured as a scalable, modular React project. Below is the directory map under `frontend/src/`:
+
+```
+frontend/src/
+├── animations/         # Spring settings & layout transition configurations (hudAnimations.js)
+├── assets/             # Static visual assets (images, SVGs, logs)
+├── components/         # Low-level UI primitives & 3D canvas (Reactor3D, GlowCard, DecryptedText)
+├── hooks/              # Reusable react hooks (useHud)
+├── layouts/            # Page structure wrapper layouts
+├── pages/              # Views and dashboards structure
+├── services/           # Network and API client abstractions (api.js)
+├── shaders/            # WebGL shader material configurations (hudShader.glsl)
+├── store/              # Central state management context (HudContext)
+├── styles/             # Stylesheets and visual themes (index.css)
+├── widgets/            # Domain-specific HUD widgets (Vitals, Console, etc.)
+├── App.jsx             # Main application grid coordinator
+└── main.jsx            # DOM entrypoint
+```
+
+*   **components**: Reusable presentation blocks. Handles low-level features such as text decryption animation or visual cards.
+*   **widgets**: Domain-specific HUD controls (Vitals, Modules, ThemeSelector, Log, Terminal, Network).
+*   **hooks**: Handles reusable React hooks. `useHud` allows any nested widget to interact with state and controls.
+*   **services**: Isolates state query APIs and backend commands execution logic.
+*   **store**: Directs react context initialization, data polling loops, and status change triggers.
+*   **shaders**: Dedicated GLSL files for implementing custom WebGL visual effects.
+*   **animations**: Frame properties, spring factors, and staggering configs.
+
