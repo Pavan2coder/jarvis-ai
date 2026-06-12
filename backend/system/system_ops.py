@@ -1,12 +1,9 @@
 import os
-import sys
 import time
 import subprocess
 
 from backend.core import config
 
-# Pending shutdown/restart guard — must be confirmed before it fires
-pending_power = {"action": None}
 
 def launch_app(name):
     """Open an app by friendly name, falling back to launching the raw name."""

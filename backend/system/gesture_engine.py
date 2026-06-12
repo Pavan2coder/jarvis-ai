@@ -6,7 +6,7 @@ import mediapipe as mp
 import pyautogui
 
 from backend.core import config
-from backend.system import system_ops
+
 
 # Shared singleton instance
 ENGINE = None

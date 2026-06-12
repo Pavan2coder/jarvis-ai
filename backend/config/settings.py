@@ -33,6 +33,8 @@ class Settings:
         
         self.GESTURES_ENABLED_ON_BOOT = os.environ.get("JARVIS_GESTURES_ENABLED_ON_BOOT", "False").lower() == "true"
         self.CAMERA_INDEX = int(os.environ.get("JARVIS_CAMERA_INDEX", "0"))
+        self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+
         
         # 4. Map loaded configuration structures
         self.APPS = self.apps_data.get("apps", {})

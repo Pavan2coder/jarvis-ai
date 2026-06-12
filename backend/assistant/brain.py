@@ -1,12 +1,8 @@
-import os
 from backend.core import config
-from backend.utils.dotenv import load_dotenv
 
-GEMINI_API_KEY = ""
+GEMINI_API_KEY = config.GEMINI_API_KEY
 GEMINI_MODEL = config.GEMINI_MODEL
 
-load_dotenv()
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Short conversation memory so Jarvis can follow up
 chat_history = []        # list of {"role": "user"/"model", "text": ...}
