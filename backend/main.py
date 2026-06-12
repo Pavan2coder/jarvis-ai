@@ -72,7 +72,7 @@ def console_loop():
 # 🚀  BOOT
 # ══════════════════════════════════════════════
 
-if __name__ == "__main__":
+def main():
     print("""
   ╔══════════════════════════════════════════════╗
   ║    J . A . R . V . I . S                     ║
@@ -130,3 +130,7 @@ if __name__ == "__main__":
     else:
         while True:
             time.sleep(1)
+
+if __name__ == "__main__":
+    main()
+
