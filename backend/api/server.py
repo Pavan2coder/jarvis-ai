@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
 
 from backend.api.routes import status, command
+from backend.websocket.events import router as ws_router
 from backend.utils import logger
 
 app = FastAPI(title="J.A.R.V.I.S API Server", version="3.5.0")
@@ -20,11 +21,17 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    logger.info("FastAPI application instance started successfully.")
+    import asyncio
+    from backend.websocket.socket_manager import manager
+    loop = asyncio.get_running_loop()
+    manager.set_loop(loop)
+    logger.info("FastAPI application instance started successfully. WebSocket loop bound.")
 
 # Register routes
 app.include_router(status.router, tags=["Status"])
 app.include_router(command.router, tags=["Command"])
+app.include_router(ws_router, tags=["WebSocket"])
+
 
 # Setup static files paths
 root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

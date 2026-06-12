@@ -69,76 +69,103 @@ export const HudProvider = ({ children }) => {
     });
   }, []);
 
-  // Polling backend
+  // Connect to backend WebSocket and poll stats
   useEffect(() => {
+    let ws = null;
+    let reconnectTimer = null;
     let offline = false;
-    
-    const pollState = async () => {
-      const startTime = performance.now();
-      try {
-        const data = await api.fetchState();
-        
-        setUiState(data);
-        setPing(Math.round(performance.now() - startTime));
+
+    const handleStateUpdate = (data) => {
+      setUiState(data);
+      setLink('LIVE');
+
+      if (offline) {
+        addLog('Reconnected to core', 'var(--green)');
+        offline = false;
+      }
+
+      // Detect status shifts
+      const st = data.status || 'idle';
+      if (st !== lastStatusRef.current) {
+        if (st === 'active') {
+          const src = data.wake_source === 'clap' ? '👏 CLAP' : (data.wake_source === 'manual' ? '⌨ MANUAL' : '🎙 VOICE');
+          setBadgeText(`── ${src} ACTIVATED ──`);
+          setShowBadge(true);
+          setTimeout(() => setShowBadge(false), 2800);
+          addLog(`Activated via ${data.wake_source || 'voice'}`, 'var(--green)');
+        } else if (st === 'listening') {
+          addLog('Listening for command…', 'var(--gold)');
+        }
+        lastStatusRef.current = st;
+      }
+
+      // Detect commands
+      if (data.command && data.command !== lastCmdRef.current) {
+        addLog(`CMD: ${data.command}`, 'var(--gold)');
+        lastCmdRef.current = data.command;
+      }
+
+      // Detect responses
+      if (data.response && data.response !== lastResRef.current) {
+        addLog(`RSP: ${data.response.slice(0, 36)}...`, 'var(--green)');
+        lastResRef.current = data.response;
+      }
+    };
+
+    const connectWs = () => {
+      ws = new WebSocket('ws://localhost:5050/ws');
+
+      ws.onopen = () => {
         setLink('LIVE');
+      };
 
-        if (offline) {
-          addLog('Reconnected to core', 'var(--green)');
-          offline = false;
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleStateUpdate(data);
+        } catch (e) {
+          console.error('WebSocket parse error:', e);
         }
+      };
 
-        // Detect status shifts
-        const st = data.status || 'idle';
-        if (st !== lastStatusRef.current) {
-          if (st === 'active') {
-            const src = data.wake_source === 'clap' ? '👏 CLAP' : (data.wake_source === 'manual' ? '⌨ MANUAL' : '🎙 VOICE');
-            setBadgeText(`── ${src} ACTIVATED ──`);
-            setShowBadge(true);
-            setTimeout(() => setShowBadge(false), 2800);
-            addLog(`Activated via ${data.wake_source || 'voice'}`, 'var(--green)');
-          } else if (st === 'listening') {
-            addLog('Listening for command…', 'var(--gold)');
-          }
-          lastStatusRef.current = st;
-        }
-
-        // Detect commands
-        if (data.command && data.command !== lastCmdRef.current) {
-          addLog(`CMD: ${data.command}`, 'var(--gold)');
-          lastCmdRef.current = data.command;
-        }
-
-        // Detect responses
-        if (data.response && data.response !== lastResRef.current) {
-          addLog(`RSP: ${data.response.slice(0, 36)}...`, 'var(--green)');
-          lastResRef.current = data.response;
-        }
-
-      } catch (e) {
+      ws.onclose = () => {
         setLink('DOWN');
         setUiState(prev => ({ ...prev, status: 'idle', response: 'Run  python jarvis.py  to connect.' }));
         if (!offline) {
           addLog('Core offline — start jarvis.py', 'var(--red)');
           offline = true;
         }
-      }
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        reconnectTimer = setTimeout(connectWs, 2000);
+      };
+
+      ws.onerror = (err) => {
+        ws.close();
+      };
     };
 
+    connectWs();
+
     const pollStats = async () => {
+      const startTime = performance.now();
       try {
         const data = await api.fetchStats();
         setStats(data);
-      } catch (e) {}
+        setPing(Math.round(performance.now() - startTime));
+      } catch (e) {
+        setPing('--');
+      }
     };
 
-    const stateTimer = setInterval(pollState, 350);
     const statsTimer = setInterval(pollStats, 1500);
-
-    pollState();
     pollStats();
 
     return () => {
-      clearInterval(stateTimer);
+      if (ws) {
+        ws.onclose = null;
+        ws.close();
+      }
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       clearInterval(statsTimer);
     };
   }, []);

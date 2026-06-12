@@ -22,3 +22,10 @@ def set_ui(status, message="", command="", response="", wake_source=""):
     ui_state["command"]    = command
     ui_state["response"]   = response
     ui_state["wake_source"] = wake_source
+
+    try:
+        from backend.websocket.socket_manager import manager
+        manager.broadcast_sync(ui_state)
+    except Exception as e:
+        logger.error(f"Failed to broadcast UI state update: {e}")
+
