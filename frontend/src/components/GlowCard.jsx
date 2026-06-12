@@ -90,7 +90,7 @@ const GlowCard = ({ children, className = '', title = '', grow = false, style = 
         </div>
       )}
 
-      <div style={{ position: 'relative', zIndex: 3 }}>
+      <div className={grow ? 'grow' : ''} style={{ position: 'relative', zIndex: 3 }}>
         {children}
       </div>
       
