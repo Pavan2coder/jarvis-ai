@@ -215,17 +215,22 @@ def handle_system_command(command):
             return True
 
     # ── gesture control ──
-    if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]):
+    if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]) \
+            or ("start" in command and "gesture" in command) \
+            or ("enable" in command and "gesture" in command):
         from backend.system import gesture_engine
         speak("Starting hand gesture control. Initializing camera.")
         gesture_engine.start_gestures()
         return True
 
-    if any(w in command for w in ["stop gesture control", "disable gestures", "turn off camera", "disable gesture control"]):
+    if any(w in command for w in ["stop gesture control", "disable gestures", "turn off camera", "disable gesture control"]) \
+            or ("stop" in command and "gesture" in command) \
+            or ("disable" in command and "gesture" in command):
         from backend.system import gesture_engine
         speak("Stopping hand gesture control. Releasing camera.")
         gesture_engine.stop_gestures()
         return True
+
 
     # ── open an app ──
     if command.startswith("open ") or command.startswith("launch ") or command.startswith("start "):
