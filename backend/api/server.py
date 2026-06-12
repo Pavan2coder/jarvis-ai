@@ -23,9 +23,15 @@ app.add_middleware(
 async def startup_event():
     import asyncio
     from backend.websocket.socket_manager import manager
+    from backend.websocket.diagnostics import start_diagnostics_streamer
+    
     loop = asyncio.get_running_loop()
     manager.set_loop(loop)
-    logger.info("FastAPI application instance started successfully. WebSocket loop bound.")
+    
+    # Spawn the background diagnostics streaming worker task
+    asyncio.create_task(start_diagnostics_streamer())
+    
+    logger.info("FastAPI application instance started successfully. WebSocket loop bound and diagnostics streamer initialized.")
 
 # Register routes
 app.include_router(status.router, tags=["Status"])

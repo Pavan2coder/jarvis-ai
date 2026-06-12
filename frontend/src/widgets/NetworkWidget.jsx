@@ -4,7 +4,8 @@ import GlowCard from '../components/GlowCard';
 import DecryptedText from '../components/DecryptedText';
 
 const NetworkWidget = () => {
-  const { ping, link } = useHud();
+  const { ping, link, stats } = useHud();
+  const net = stats?.network || { sent_speed: 0.0, recv_speed: 0.0 };
 
   return (
     <GlowCard>
@@ -23,6 +24,14 @@ const NetworkWidget = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>LATENCY</span>
           <span style={{ color: '#fff' }}>{ping} ms</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>UP (TX)</span>
+          <span style={{ color: 'var(--gold)' }}>{net.sent_speed} KB/s</span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <span>DOWN (RX)</span>
+          <span style={{ color: 'var(--cyan)' }}>{net.recv_speed} KB/s</span>
         </div>
       </div>
     </GlowCard>

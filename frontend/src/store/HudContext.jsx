@@ -71,33 +71,45 @@ export const HudProvider = ({ children }) => {
   }, []);
 
   const offlineRef = useRef(false);
+  const lastPingTimeRef = useRef(0);
 
   // Handle incoming websocket messages
   const handleMessage = useCallback((payload) => {
-    let data = payload;
+    if (!payload) return;
     
     // Check if it's wrapped in our Event system payload
-    if (payload && payload.event) {
-      // Log event updates to activity log
+    if (payload.event) {
       if (payload.event === 'COMMAND_EXECUTED') {
         addLog(`CMD Executed: ${payload.data.command || ''}`, 'var(--green)');
       } else if (payload.event === 'VOICE_DETECTED') {
         addLog(`Voice detected (intensity: ${payload.data.intensity || ''})`, 'var(--cyan)');
+      } else if (payload.event === 'DIAGNOSTICS_UPDATE') {
+        setStats(payload.data);
+        return;
+      } else if (payload.event === 'pong') {
+        const latency = Math.round(performance.now() - lastPingTimeRef.current);
+        setPing(latency);
+        return;
       }
       
-      data = payload.data;
+      // For general wrapped events, extract state payload if applicable
+      if (payload.data && payload.event === 'SYSTEM_UPDATE') {
+        setUiState(payload.data);
+      }
+    } else {
+      // Raw state object fallback
+      setUiState(payload);
     }
-
-    if (!data) return;
-
-    setUiState(data);
 
     if (offlineRef.current) {
       addLog('Reconnected to core', 'var(--green)');
       offlineRef.current = false;
     }
 
-    // Detect status shifts
+    // Detect status shifts if the state updates
+    const data = payload.event === 'SYSTEM_UPDATE' ? payload.data : (!payload.event ? payload : null);
+    if (!data) return;
+
     const st = data.status || 'idle';
     if (st !== lastStatusRef.current) {
       if (st === 'active') {
@@ -126,13 +138,14 @@ export const HudProvider = ({ children }) => {
   }, []);
 
   // Initialize WebSocket connection hook
-  const { connectionStatus } = useWebSocket(handleMessage);
+  const { connectionStatus, sendMessage } = useWebSocket(handleMessage);
 
   // Synchronize WebSocket status with HudContext state
   useEffect(() => {
     setLink(connectionStatus);
     if (connectionStatus === 'DOWN') {
       setUiState(prev => ({ ...prev, status: 'idle', response: 'Run  python jarvis.py  to connect.' }));
+      setPing('--');
       if (!offlineRef.current) {
         addLog('Core offline — start jarvis.py', 'var(--red)');
         offlineRef.current = true;
@@ -140,26 +153,22 @@ export const HudProvider = ({ children }) => {
     }
   }, [connectionStatus]);
 
-  // Statistics polling loop
+  // Ping heartbeat timer
   useEffect(() => {
-    const pollStats = async () => {
-      const startTime = performance.now();
-      try {
-        const data = await api.fetchStats();
-        setStats(data);
-        setPing(Math.round(performance.now() - startTime));
-      } catch (e) {
-        setPing('--');
-      }
+    if (connectionStatus !== 'LIVE') return;
+
+    const sendPing = () => {
+      lastPingTimeRef.current = performance.now();
+      sendMessage('ping');
     };
 
-    const statsTimer = setInterval(pollStats, 1500);
-    pollStats();
+    const pingTimer = setInterval(sendPing, 3000);
+    sendPing(); // Initial trigger
 
     return () => {
-      clearInterval(statsTimer);
+      clearInterval(pingTimer);
     };
-  }, []);
+  }, [connectionStatus, sendMessage]);
 
   const triggerTerminalSubmit = async (text) => {
     addLog(`Terminal CMD: ${text}`, 'var(--gold)');

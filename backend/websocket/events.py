@@ -17,6 +17,7 @@ class JarvisEventType(str, Enum):
     COMMAND_EXECUTED = "COMMAND_EXECUTED"
     SYSTEM_UPDATE = "SYSTEM_UPDATE"
     VOICE_DETECTED = "VOICE_DETECTED"
+    DIAGNOSTICS_UPDATE = "DIAGNOSTICS_UPDATE"
 
 # 2. Event Payload Model
 class JarvisEvent:
@@ -126,6 +127,11 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
             logger.info(f"Received WebSocket data: {data}")
+            
+            # Fast-path heartbeat ping/pong
+            if isinstance(data, dict) and data.get("event") == "ping":
+                await websocket.send_json({"event": "pong"})
+                continue
             
             # Allow clients to emit events back into the dispatch loop
             if isinstance(data, dict) and "event" in data:
