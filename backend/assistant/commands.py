@@ -268,7 +268,26 @@ def handle_command(command):
     logger.info(f"Parsed intent: '{intent}' (confidence: {result['confidence']}) with entities: {entities}")
 
     # 2. Dispatch based on Intent
-    if intent == "camera_capture":
+    if intent == "browser_automation":
+        session_memory.set("current_task", "browser_automation")
+        action = entities.get("action")
+        query = entities.get("query", "")
+        if not query:
+            speak("What would you like me to search for?")
+            return
+        from backend.system import browser_control
+        if action == "search_google":
+            speak(f"Searching Google for {query}.")
+            browser_control.automate_google_search(query)
+        elif action == "search_youtube":
+            speak(f"Opening YouTube and searching for {query}.")
+            browser_control.automate_youtube_search(query)
+        elif action == "search_github":
+            speak(f"Opening GitHub and searching for {query}.")
+            browser_control.automate_github_search(query)
+        return
+
+    elif intent == "camera_capture":
         session_memory.set("current_task", "camera_capture")
         from backend.system import camera_ops
         speak("Taking a photo. Please look at the camera.")

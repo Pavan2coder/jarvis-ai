@@ -97,6 +97,20 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         intent = "screenshot"
         confidence = 0.95
         
+    # 3. BROWSER_AUTOMATION INTENT
+    elif any(x in normalized for x in ["open youtube and search", "search google for", "open github and search"]):
+        intent = "browser_automation"
+        confidence = 0.98
+        if "open youtube and search" in normalized:
+            entities["action"] = "search_youtube"
+            entities["query"] = normalized.split("open youtube and search")[-1].strip()
+        elif "open github and search" in normalized:
+            entities["action"] = "search_github"
+            entities["query"] = normalized.split("open github and search")[-1].strip()
+        elif "search google for" in normalized:
+            entities["action"] = "search_google"
+            entities["query"] = normalized.split("search google for")[-1].strip()
+        
     # 2. DIAGNOSTICS INTENT
     elif any(phrase in normalized for phrase in ["cpu", "ram", "gpu", "processor", "memory", "graphics", "system info", "diagnostics"]):
         intent = "diagnostics"

@@ -13,3 +13,4 @@ pycaw>=20181106
 comtypes>=1.2.0
 opencv-python>=4.9.0
 mediapipe>=0.10.11
+playwright>=1.60.0
