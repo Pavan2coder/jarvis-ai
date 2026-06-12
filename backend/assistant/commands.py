@@ -397,8 +397,9 @@ def handle_command(command):
             pass
         os._exit(0)
 
-    # ── Anything else → ask the Gemini AI brain ──
+    # ── Anything else → ask the Centralized LLM Router ──
     else:
         ui_server.set_ui("thinking", message="Thinking...", command=command)
-        answer = brain.ask_gemini(command)
+        from backend.assistant import llm_router
+        answer = llm_router.ask_llm(command)
         speak(answer)
