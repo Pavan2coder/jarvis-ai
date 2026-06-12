@@ -1,0 +1,35 @@
+{
+    "command_triggers": [
+        "open", "close", "launch", "start", "stop", "disable", "turn", "kill", "shut", "shutdown", "restart",
+        "reboot", "lock", "sleep", "play", "pause", "search", "google", "youtube",
+        "spotify", "music", "song", "playlist", "screenshot", "mute", "silence",
+        "volume", "louder", "quieter", "brightness", "dim",
+        "time", "clock", "date", "today", "weather", "temperature", "forecast",
+        "battery", "cpu", "processor", "ram", "memory", "gpu", "graphics", "ip",
+        "joke", "funny",
+        "notepad", "calculator", "calc", "paint", "word", "excel", "powerpoint",
+        "chrome", "edge", "firefox", "browser", "settings", "camera", "explorer",
+        "task manager", "powershell", "cmd", "folder", "directory", "desktop",
+        "downloads", "documents", "pictures", "videos", "vs code", "vscode",
+        "what", "who", "how", "why", "when", "where", "which", "tell me", "tell",
+        "can you", "do you", "explain", "define", "calculate", "translate",
+        "hello", "hey", "goodbye", "bye", "exit", "quit"
+    ],
+    "web_tab_words": [
+        "youtube", "google", "gmail", "tab", "website", "web page", "webpage"
+    ],
+    "spotify_playlists": {
+        "chill": "https://open.spotify.com/playlist/37i9dQZF1DX4WYpdgoIcn6",
+        "focus": "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M",
+        "workout": "https://open.spotify.com/playlist/37i9dQZF1DX76Wlfdnj7AP",
+        "party": "https://open.spotify.com/playlist/37i9dQZF1DXaXB8fQg7xif",
+        "sleep": "https://open.spotify.com/playlist/37i9dQZF1DWZd79rJ6a7lp",
+        "default": "https://open.spotify.com/"
+    },
+    "jokes": [
+        "Why don't scientists trust atoms? Because they make up everything!",
+        "Why do programmers prefer dark mode? Because light attracts bugs!",
+        "How many programmers does it take to change a light bulb? None. That's a hardware problem.",
+        "I told my computer I needed a break. Now it won't stop sending me Kit-Kat ads."
+    ]
+}
