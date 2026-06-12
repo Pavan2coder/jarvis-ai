@@ -10,6 +10,7 @@ import re
 from backend.core import config
 from backend.system import system_ops
 from backend.assistant import brain
+from backend.assistant.session_memory import session_memory
 from backend.api import ui_server
 from backend.voice.audio_engine import speak, listen
 from backend.utils.logger import logger
@@ -255,6 +256,9 @@ def handle_command(command):
     # Normalize log output
     logger.info(f"Received user command: '{command}'")
 
+    # Update session memory command history
+    session_memory.set("last_command", command)
+
     # 1. Classify intent via NLP classifier
     from backend.assistant.intent_classifier import classify_intent
     result = classify_intent(command)
@@ -265,6 +269,7 @@ def handle_command(command):
 
     # 2. Dispatch based on Intent
     if intent == "screenshot":
+        session_memory.set("current_task", "screenshot_capture")
         try:
             import pyautogui
             fname = f"screenshot_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
@@ -276,12 +281,17 @@ def handle_command(command):
         return
 
     elif intent == "diagnostics":
+        session_memory.set("current_task", "system_diagnostics")
         speak(system_ops.system_stats_report(command))
         return
 
     elif intent == "close_app":
         app_name = entities.get("app_name")
         if app_name:
+            session_memory.set("current_task", f"closed_{app_name}")
+            if session_memory.get("last_opened_app") == app_name:
+                session_memory.set("last_opened_app", None)
+                
             if any(w in app_name for w in config.WEB_TAB_WORDS) and "browser" not in app_name:
                 if system_ops.close_active_browser_tab():
                     speak(f"Closing the {app_name} tab.")
@@ -302,6 +312,12 @@ def handle_command(command):
     elif intent == "open_app":
         app_name = entities.get("app_name")
         if app_name:
+            # Set context variables
+            session_memory.set("last_opened_app", app_name)
+            session_memory.set("current_task", f"launched_{app_name}")
+            if app_name in ["chrome", "edge", "firefox", "browser"]:
+                session_memory.set("current_browser", app_name)
+                
             # Check folder paths first
             if app_name in config.FOLDERS:
                 path = config.FOLDERS[app_name]
@@ -325,8 +341,19 @@ def handle_command(command):
     elif intent == "search":
         query = entities.get("query")
         if query:
-            speak(f"Searching for {query}.")
-            webbrowser.open(f"https://www.google.com/search?q={query.replace(' ','+')}")
+            # Context-aware routing based on last opened app
+            last_app = session_memory.get("last_opened_app")
+            session_memory.set("current_task", f"search_{last_app or 'web'}")
+            
+            if last_app == "youtube" or "youtube" in command:
+                speak(f"Searching YouTube for {query}.")
+                webbrowser.open(f"https://www.youtube.com/results?search_query={query.replace(' ','+')}")
+            elif last_app == "spotify" or "spotify" in command:
+                speak(f"Searching Spotify for {query}.")
+                webbrowser.open(f"https://open.spotify.com/search/{query.replace(' ', '%20')}")
+            else:
+                speak(f"Searching Google for {query}.")
+                webbrowser.open(f"https://www.google.com/search?q={query.replace(' ','+')}")
         else:
             speak("What should I search for?")
         return
@@ -335,6 +362,8 @@ def handle_command(command):
         action = entities.get("action")
         val = entities.get("value")
         global pending_power
+        
+        session_memory.set("current_task", f"sys_ctrl_{action}")
         
         if action == "set_volume" and val is not None:
             if system_ops.set_volume_percent(val):
@@ -394,6 +423,7 @@ def handle_command(command):
         return
 
     elif intent == "greeting":
+        session_memory.set("current_task", "greeting")
         speak(random.choice([
             f"Hello {config.YOUR_NAME}! All systems go. How can I help?",
             f"Hey {config.YOUR_NAME}! Ready and waiting.",
@@ -421,21 +451,26 @@ def handle_command(command):
 
     # Custom checks for Time, Date, Weather, Jokes etc.
     if any(w in command for w in ["time", "clock"]):
+        session_memory.set("current_task", "time_query")
         now = datetime.datetime.now().strftime("%I:%M %p")
         speak(f"It's {now}, {config.YOUR_NAME}.")
         return
     if any(w in command for w in ["date", "today", "day is it"]):
+        session_memory.set("current_task", "date_query")
         today = datetime.datetime.now().strftime("%A, %B %d, %Y")
         speak(f"Today is {today}.")
         return
     if any(w in command for w in ["weather", "temperature", "forecast"]):
+        session_memory.set("current_task", "weather_query")
         speak(f"Opening weather for {config.YOUR_CITY}.")
         webbrowser.open(f"https://www.google.com/search?q=weather+{config.YOUR_CITY.replace(' ','+')}")
         return
     if any(w in command for w in ["joke", "funny", "make me laugh"]):
+        session_memory.set("current_task", "joke_query")
         speak(random.choice(config.jokes))
         return
     if "ip" in command:
+        session_memory.set("current_task", "ip_query")
         import socket
         try:
             ip = socket.gethostbyname(socket.gethostname())
@@ -443,10 +478,12 @@ def handle_command(command):
         except: speak("Couldn't get your IP.")
         return
     if any(w in command for w in ["who are you", "what are you", "introduce"]):
+        session_memory.set("current_task", "introduce")
         speak(f"I am Jarvis — Just A Rather Very Intelligent System. Personal AI assistant for {config.YOUR_NAME}.")
         return
 
     # ── Anything else → ask the Centralized LLM Router ──
+    session_memory.set("current_task", "query_llm")
     ui_server.set_ui("thinking", message="Thinking...", command=command)
     from backend.assistant import llm_router
     answer = llm_router.ask_llm(command)

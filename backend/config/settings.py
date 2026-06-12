@@ -36,6 +36,7 @@ class Settings:
         self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
         self.OLLAMA_URL = os.environ.get("JARVIS_OLLAMA_URL", "http://localhost:11434")
         self.OLLAMA_MODEL = os.environ.get("JARVIS_OLLAMA_MODEL", "llama3")
+        self.SESSION_TTL = float(os.environ.get("JARVIS_SESSION_TTL", "300.0"))
 
         
         # 4. Map loaded configuration structures
