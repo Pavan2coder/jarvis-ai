@@ -10,33 +10,33 @@ J.A.R.V.I.S is divided into a **Python modular backend** and a **React-based Web
 
 ```mermaid
 graph TD
-    subgraph Frontend (React / WebGL)
-        HUD[HUD Page Layout] --> Context[HudContext - State Store]
-        Context --> Widgets[Widgets - Vitals/Logs/Console]
-        Widgets --> APIClient[api.js - Service Client]
+    subgraph Frontend ["Frontend (React / WebGL)"]
+        HUD["HUD Page Layout"] --> Context["HudContext - State Store"]
+        Context --> Widgets["Widgets - Vitals/Logs/Console"]
+        Widgets --> APIClient["api.js - Service Client"]
     end
 
-    subgraph Backend (Python Package)
-        Wrapper[jarvis.py - Boot Wrapper] --> Main[backend/main.py - Orchestrator]
-        Main --> AudioLoop[voice/audio_engine.py - VAD Loop]
-        Main --> APIBridge[api/ui_server.py - Server Bridge]
+    subgraph Backend ["Backend (Python Package)"]
+        Wrapper["jarvis.py - Boot Wrapper"] --> Main["backend/main.py - Orchestrator"]
+        Main --> AudioLoop["voice/audio_engine.py - VAD Loop"]
+        Main --> APIBridge["api/ui_server.py - Server Bridge"]
         
-        AudioLoop --> CmdHandler[assistant/commands.py - Parser]
-        APIBridge --> APIHandler[UIHandler - Endpoint Router]
+        AudioLoop --> CmdHandler["assistant/commands.py - Parser"]
+        APIBridge --> APIHandler["UIHandler - Endpoint Router"]
         
-        CmdHandler --> SysOps[system/system_ops.py - OS Control]
-        CmdHandler --> AI[assistant/brain.py - Gemini Model]
+        CmdHandler --> SysOps["system/system_ops.py - OS Control"]
+        CmdHandler --> AI["assistant/brain.py - Gemini Model"]
         
-        Gesture[system/gesture_engine.py - MediaPipe]
+        Gesture["system/gesture_engine.py - MediaPipe"]
     end
 
     %% Communication Loops
-    APIClient -- HTTP Polling /state & /stats --> APIBridge
-    APIClient -- HTTP GET /command --> APIBridge
-    APIHandler -- Queues commands --> CmdHandler
-    AI -- REST HTTPS --> GoogleStudio[Google Gemini API]
-    SysOps -- ctypes / subprocess --> OS[Windows OS / PyAutoGUI]
-    Gesture -- Virtual Input --> OS
+    APIClient -- "HTTP Polling /state & /stats" --> APIBridge
+    APIClient -- "HTTP GET /command" --> APIBridge
+    APIHandler -- "Queues commands" --> CmdHandler
+    AI -- "REST HTTPS" --> GoogleStudio["Google Gemini API"]
+    SysOps -- "ctypes / subprocess" --> OS["Windows OS / PyAutoGUI"]
+    Gesture -- "Virtual Input" --> OS
 ```
 
 ---

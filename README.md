@@ -59,29 +59,29 @@ The project is structured around a decoupled local communication model. The Reac
 
 ```mermaid
 graph TD
-    subgraph Frontend (React / WebGL)
-        HUD[React UI / HTML HUD] --> Context[HudContext - State Store]
-        Context --> APIClient[api.js - Service Client]
+    subgraph Frontend ["Frontend (React / WebGL)"]
+        HUD["React UI / HTML HUD"] --> Context["HudContext - State Store"]
+        Context --> APIClient["api.js - Service Client"]
     end
 
-    subgraph Backend (Python Package)
-        Wrapper[jarvis.py - Startup Wrapper] --> Main[backend/main.py - Orchestrator]
-        Main --> AudioEngine[backend/voice/audio_engine.py - VAD/TTS]
-        Main --> UIServer[backend/api/ui_server.py - HTTPServer]
+    subgraph Backend ["Backend (Python Package)"]
+        Wrapper["jarvis.py - Startup Wrapper"] --> Main["backend/main.py - Orchestrator"]
+        Main --> AudioEngine["backend/voice/audio_engine.py - VAD/TTS"]
+        Main --> UIServer["backend/api/ui_server.py - HTTPServer"]
         
-        AudioEngine --> Commands[backend/assistant/commands.py - Handler]
+        AudioEngine --> Commands["backend/assistant/commands.py - Handler"]
         UIServer --> Commands
         
-        Commands --> SystemOps[backend/system/system_ops.py - OS Control]
-        Commands --> Brain[backend/assistant/brain.py - Gemini Client]
-        Main --> Gesture[backend/system/gesture_engine.py - MediaPipe]
+        Commands --> SystemOps["backend/system/system_ops.py - OS Control"]
+        Commands --> Brain["backend/assistant/brain.py - Gemini Client"]
+        Main --> Gesture["backend/system/gesture_engine.py - MediaPipe"]
     end
 
     %% Communication Connections
-    APIClient -- Polling /state & /stats --> UIServer
-    APIClient -- Submit /command?text= --> UIServer
-    Brain --> Gemini[Google Gemini API]
-    SystemOps --> OS[Windows Desktop / Shell]
+    APIClient -- "Polling /state & /stats" --> UIServer
+    APIClient -- "Submit /command?text=" --> UIServer
+    Brain --> Gemini["Google Gemini API"]
+    SystemOps --> OS["Windows Desktop / Shell"]
     Gesture --> OS
 ```
 
