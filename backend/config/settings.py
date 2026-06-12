@@ -37,6 +37,7 @@ class Settings:
         self.OLLAMA_URL = os.environ.get("JARVIS_OLLAMA_URL", "http://localhost:11434")
         self.OLLAMA_MODEL = os.environ.get("JARVIS_OLLAMA_MODEL", "llama3")
         self.SESSION_TTL = float(os.environ.get("JARVIS_SESSION_TTL", "300.0"))
+        self.CLAP_SENSITIVITY = float(os.environ.get("JARVIS_CLAP_SENSITIVITY", "0.5"))
 
         
         # 4. Map loaded configuration structures

@@ -82,6 +82,64 @@ def has_command_trigger(text):
             return True
     return False
 
+class AdaptiveClapDetector:
+    def __init__(self, sensitivity: float = 0.5):
+        self.sensitivity = sensitivity
+        self.ambient_peak = 1000.0
+        self.ambient_mean = 100.0
+        self.clap_times = []
+        self.last_clap_time = 0.0
+        self.cooldown = config.CLAP_COOLDOWN
+        self.window = config.DOUBLE_CLAP_WINDOW
+
+    def calibrate(self, samples_peaks: list, samples_means: list):
+        if samples_peaks:
+            self.ambient_peak = max(400.0, float(np.median(samples_peaks)))
+        if samples_means:
+            self.ambient_mean = max(40.0, float(np.median(samples_means)))
+
+    def process_frame(self, mean: float, peak: float) -> bool:
+        now = time.time()
+        
+        # 1. Adapt running ambient levels
+        is_impulsive = peak > (self.ambient_peak * 2.5)
+        if not is_impulsive:
+            self.ambient_peak = 0.98 * self.ambient_peak + 0.02 * peak
+            self.ambient_mean = 0.98 * self.ambient_mean + 0.02 * mean
+        else:
+            self.ambient_peak = 0.999 * self.ambient_peak + 0.001 * peak
+            self.ambient_mean = 0.999 * self.ambient_mean + 0.001 * mean
+            
+        self.ambient_peak = max(400.0, self.ambient_peak)
+        self.ambient_mean = max(40.0, self.ambient_mean)
+
+        # 2. Dynamic Threshold calculation
+        multiplier = 12.0 - (self.sensitivity * 9.0)
+        clap_threshold = max(3500.0, self.ambient_peak * multiplier)
+        
+        # 3. Clap Signature Validation (impulse detection & false positive prevention)
+        is_loud_enough = peak > clap_threshold
+        crest_factor = peak / max(1.0, mean)
+        is_impulsive_crest = crest_factor > 8.5
+        is_not_sustained = mean < (self.ambient_mean * 4.5)
+        
+        is_clap = is_loud_enough and is_impulsive_crest and is_not_sustained
+        
+        if is_clap:
+            if (now - self.last_clap_time) > 0.15:
+                self.last_clap_time = now
+                self.clap_times = [t for t in self.clap_times if now - t < self.window]
+                self.clap_times.append(now)
+                
+                # Check for double clap pattern
+                if len(self.clap_times) >= 2:
+                    gap = self.clap_times[-1] - self.clap_times[-2]
+                    if self.cooldown < gap < self.window:
+                        self.clap_times.clear()
+                        return True
+                        
+        return False
+
 class AudioEngine:
     def __init__(self):
         self.pa = pyaudio.PyAudio()
@@ -89,7 +147,11 @@ class AudioEngine:
         self.stream = self._open_working_input()
         self.ambient    = 80.0
         self.speech_thr = config.SPEECH_THRESHOLD
-        self.clap_thr   = config.CLAP_THRESHOLD
+        
+        # Initialize Adaptive Clap Detector
+        self.clap_detector = AdaptiveClapDetector(sensitivity=config.CLAP_SENSITIVITY)
+        self.clap_thr   = self.clap_detector.ambient_peak * 3.0
+        
         self.busy       = False           # True while handling a command
         self.clap_times = []
         self.last_edge  = 0.0
@@ -176,29 +238,18 @@ class AudioEngine:
         if vols:
             self.ambient    = max(40.0, float(np.median(vols)))
             self.speech_thr = max(300.0, self.ambient * 2.4)
-            # Clap = peak impulse
-            self.clap_thr   = max(8000.0, peak_floor * 1.8)
+            
+            # Calibrate adaptive baseline
+            self.clap_detector.calibrate(peaks, vols)
+            self.clap_thr = self.clap_detector.ambient_peak * (12.0 - (self.clap_detector.sensitivity * 9.0))
+            
         if self.ambient < 45:
             print("  ⚠️  Mic seems SILENT — check it's plugged in & not muted in Windows sound settings!")
         print(f"  ✅  Ambient≈{int(self.ambient)} | speak>{int(self.speech_thr)} | "
-              f"clap-peak>{int(self.clap_thr)} | room-peak={int(peak_floor)}")
+              f"clap-peak-ambient≈{int(self.clap_detector.ambient_peak)} | room-peak={int(peak_floor)}")
         print("      👏 Tip: clap twice now — watch the 'transient peak' numbers below to tune.")
 
-    def _is_double_clap(self, level):
-        now  = time.time()
-        loud = level > self.clap_thr
-        edge = loud and not self.prev_loud
-        self.prev_loud = loud
-        if edge and (now - self.last_edge) > 0.12:
-            self.last_edge  = now
-            self.clap_times = [t for t in self.clap_times if now - t < config.DOUBLE_CLAP_WINDOW]
-            self.clap_times.append(now)
-            if len(self.clap_times) >= 2:
-                gap = self.clap_times[-1] - self.clap_times[-2]
-                if config.CLAP_COOLDOWN < gap < config.DOUBLE_CLAP_WINDOW:
-                    self.clap_times.clear()
-                    return True
-        return False
+    # Replaced by AdaptiveClapDetector.process_frame
 
     def capture_phrase(self, start_timeout=6, max_seconds=8):
         ui_server.set_ui("listening", message="Listening...")
@@ -303,11 +354,12 @@ class AudioEngine:
                 data, vol, peak = self._read()
 
                 # Show loud impulse to help tune threshold
-                if peak > self.clap_thr * 0.45:
-                    print(f"  🔊 transient peak={int(peak)}  (clap needs >{int(self.clap_thr)})")
+                clap_needed = self.clap_detector.ambient_peak * (12.0 - (self.clap_detector.sensitivity * 9.0))
+                if peak > clap_needed * 0.45:
+                    print(f"  🔊 transient peak={int(peak)}  (clap needs >{int(clap_needed)})")
 
                 # 1) double clap?
-                if self._is_double_clap(peak):
+                if self.clap_detector.process_frame(vol, peak):
                     print("\n  👏👏  Double clap detected!")
                     frames, recording, silent = [], False, 0
                     self.activate("clap")
