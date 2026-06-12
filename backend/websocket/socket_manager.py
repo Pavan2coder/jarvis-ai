@@ -1,44 +1,78 @@
 import asyncio
-from typing import List
+import time
+from typing import Dict, List, Any
 from fastapi import WebSocket
+from starlette.websockets import WebSocketState
 from backend.utils import logger
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        # Map active WebSocket connections to their metadata dict
+        self.active_connections: Dict[WebSocket, Dict[str, Any]] = {}
         self.loop: asyncio.AbstractEventLoop = None
 
     def set_loop(self, loop: asyncio.AbstractEventLoop):
         """Sets the active event loop to allow bridging sync-to-async calls."""
         self.loop = loop
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, client_id: str = None):
+        """Registers a new WebSocket client and accepts the connection."""
         await websocket.accept()
-        self.active_connections.append(websocket)
-        logger.info(f"WebSocket client connected. Active connections: {len(self.active_connections)}")
+        
+        # Gather connection details
+        client_address = f"{websocket.client.host}:{websocket.client.port}" if websocket.client else "unknown"
+        cid = client_id or f"client_{client_address}_{int(time.time())}"
+        
+        self.active_connections[websocket] = {
+            "client_id": cid,
+            "connected_at": time.time(),
+            "status": "connected",
+            "last_message_at": time.time(),
+            "address": client_address
+        }
+        
+        logger.info(f"WebSocket client '{cid}' connected from {client_address}. Active connections: {len(self.active_connections)}")
 
     def disconnect(self, websocket: WebSocket):
+        """Removes a client from active tracking."""
         if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-            logger.info(f"WebSocket client disconnected. Active connections: {len(self.active_connections)}")
+            client_info = self.active_connections.pop(websocket)
+            logger.info(f"WebSocket client '{client_info['client_id']}' disconnected. Active connections: {len(self.active_connections)}")
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
+        """Sends a JSON message to a single client with automatic error recovery."""
+        self.cleanup_dead_connections()
+        if websocket not in self.active_connections:
+            logger.warning("Attempted to send message to an inactive or disconnected WebSocket.")
+            return
+
         try:
             await websocket.send_json(message)
+            self.active_connections[websocket]["last_message_at"] = time.time()
         except Exception as e:
-            logger.error(f"Error sending message to WebSocket client: {e}")
+            logger.error(f"Error sending message to client '{self.active_connections[websocket]['client_id']}': {e}")
+            self.disconnect(websocket)
 
     async def broadcast(self, message: dict):
-        """Broadcasts a JSON message to all connected clients asynchronously."""
+        """Broadcasts a JSON message to all connected clients asynchronously with error recovery."""
+        self.cleanup_dead_connections()
         if not self.active_connections:
             return
-        # Create a copy to prevent mutation issues during iteration
-        connections = list(self.active_connections)
+
+        # Create a copy of keys to avoid modification during iteration
+        connections = list(self.active_connections.keys())
         for connection in connections:
             try:
-                await connection.send_json(message)
+                if (connection.client_state == WebSocketState.CONNECTED and 
+                    connection.application_state == WebSocketState.CONNECTED):
+                    await connection.send_json(message)
+                    if connection in self.active_connections:
+                        self.active_connections[connection]["last_message_at"] = time.time()
+                else:
+                    self.disconnect(connection)
             except Exception as e:
-                logger.error(f"Error broadcasting to client connection: {e}")
+                client_id = self.active_connections[connection]["client_id"] if connection in self.active_connections else "unknown"
+                logger.error(f"Error broadcasting to client '{client_id}': {e}")
                 self.disconnect(connection)
 
     def broadcast_sync(self, message: dict):
@@ -48,6 +82,29 @@ class ConnectionManager:
             return
         if self.active_connections:
             asyncio.run_coroutine_threadsafe(self.broadcast(message), self.loop)
+
+    def get_client_status(self) -> List[Dict[str, Any]]:
+        """Returns the status and metadata for all active client connections."""
+        self.cleanup_dead_connections()
+        return [
+            {
+                "client_id": info["client_id"],
+                "connected_at": info["connected_at"],
+                "last_message_at": info["last_message_at"],
+                "address": info["address"],
+                "status": info["status"]
+            }
+            for info in self.active_connections.values()
+        ]
+
+    def cleanup_dead_connections(self):
+        """Scans and cleans up any stale or disconnected WebSocket connections."""
+        connections = list(self.active_connections.keys())
+        for connection in connections:
+            if (connection.client_state == WebSocketState.DISCONNECTED or 
+                connection.application_state == WebSocketState.DISCONNECTED):
+                logger.warning(f"Cleaning up dead/stale connection: {connection}")
+                self.disconnect(connection)
 
 # Singleton Connection Manager
 manager = ConnectionManager()
