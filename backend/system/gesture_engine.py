@@ -18,6 +18,9 @@ class GestureEngine:
         self.cap = None
         self._latest_frame = None
         self._frame_lock = threading.Lock()
+        self.current_gesture = "None"
+        self.current_action = "None"
+        self.camera_status = "Inactive"
         
         # MediaPipe initialization
         self.mp_hands = mp.solutions.hands
@@ -50,8 +53,10 @@ class GestureEngine:
         if self.running:
             return True
         self.running = True
+        self.camera_status = "Active"
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
+        self._emit_status("None", "None")
         print("  🎥  Gesture Control Engine started.")
         return True
 
@@ -59,11 +64,13 @@ class GestureEngine:
         if not self.running:
             return
         self.running = False
+        self.camera_status = "Inactive"
         if self.thread:
             self.thread.join(timeout=1.0)
             self.thread = None
         with self._frame_lock:
             self._latest_frame = None
+        self._emit_status("None", "None")
         print("  🎥  Gesture Control Engine stopped.")
 
     def get_latest_frame(self):
@@ -72,6 +79,24 @@ class GestureEngine:
             return None
         with self._frame_lock:
             return self._latest_frame.copy()
+
+    def _emit_status(self, gesture="None", action="None"):
+        if gesture == self.current_gesture and action == self.current_action and (self.running and self.camera_status == "Active"):
+            return  # Skip duplicate emissions
+        self.current_gesture = gesture
+        self.current_action = action
+        try:
+            from backend.websocket.events import dispatcher, JarvisEvent, JarvisEventType
+            from backend.websocket.socket_manager import manager
+            event = JarvisEvent(JarvisEventType.GESTURE_UPDATE, {
+                "active": self.running,
+                "gesture": self.current_gesture,
+                "action": self.current_action,
+                "camera": self.camera_status
+            })
+            dispatcher.emit_sync(event, loop=manager.loop)
+        except Exception as e:
+            print(f"  ⚠️  Failed to emit gesture update: {e}")
 
     def _get_finger_states(self, landmarks):
         """Returns [thumb, index, middle, ring, pinky] booleans indicating if open."""
@@ -97,6 +122,8 @@ class GestureEngine:
         if not self.cap.isOpened():
             print("  ⚠️  Could not open webcam for gesture control.")
             self.running = False
+            self.camera_status = "Error"
+            self._emit_status("None", "None")
             return
 
         # Coordinate active box (normalized coordinates)
@@ -129,6 +156,7 @@ class GestureEngine:
                 
                 # Check for Open Palm (🖐️) -> Pause tracking & Activate Jarvis
                 if all(states):
+                    self._emit_status("Open Palm", "Activate Jarvis")
                     if not self.palm_start_time:
                         self.palm_start_time = time.time()
                     elif (time.time() - self.palm_start_time > 1.5) and not self.activated_this_palm:
@@ -147,6 +175,7 @@ class GestureEngine:
 
                 # Check for Fist (✊) -> Toggle Mute
                 if not any(states):
+                    self._emit_status("Fist", "Mute")
                     now = time.time()
                     if now - self.last_mute_time > 2.5:
                         self.last_mute_time = now
@@ -159,6 +188,7 @@ class GestureEngine:
 
                 # Check for Thumbs Up (👍) -> Play/Pause Music
                 if states[0] and not any(states[1:]):
+                    self._emit_status("Thumbs Up", "Play/Pause")
                     now = time.time()
                     if now - self.last_play_time > 2.5:
                         self.last_play_time = now
@@ -175,11 +205,13 @@ class GestureEngine:
                     d_tips = math.hypot(landmarks[8].x - landmarks[12].x, landmarks[8].y - landmarks[12].y)
                     # If fingers are spread -> Do nothing (disabled VS Code launch)
                     if d_tips > 0.055:
+                        self._emit_status("Peace Sign", "None")
                         time.sleep(0.01)
                         continue
                     
                     # If fingers are close -> Scroll Mode
                     else:
+                        self._emit_status("Peace Sign", "Scroll")
                         y_mid = (landmarks[8].y + landmarks[12].y) / 2.0
                         if prev_scroll_y is not None:
                             dy = y_mid - prev_scroll_y
@@ -220,13 +252,19 @@ class GestureEngine:
                     # Pinch to Click/Drag (Thumb tip 4 + Index tip 8)
                     d_pinch = math.hypot(landmarks[4].x - landmarks[8].x, landmarks[4].y - landmarks[8].y)
                     if d_pinch < 0.035:
+                        self._emit_status("Index Pinch", "Click/Drag")
                         if not self.mouse_down:
                             self.mouse_down = True
                             pyautogui.mouseDown()
                     elif d_pinch > 0.045:
+                        self._emit_status("Index Point", "Hover/Move Mouse")
                         if self.mouse_down:
                             self.mouse_down = False
                             pyautogui.mouseUp()
+                else:
+                    self._emit_status("None", "None")
+            else:
+                self._emit_status("None", "None")
             
             # Optional sleep to reduce CPU load
             time.sleep(0.01)

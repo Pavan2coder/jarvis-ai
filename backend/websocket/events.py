@@ -18,6 +18,7 @@ class JarvisEventType(str, Enum):
     SYSTEM_UPDATE = "SYSTEM_UPDATE"
     VOICE_DETECTED = "VOICE_DETECTED"
     DIAGNOSTICS_UPDATE = "DIAGNOSTICS_UPDATE"
+    GESTURE_UPDATE = "GESTURE_UPDATE"
 
 # 2. Event Payload Model
 class JarvisEvent:

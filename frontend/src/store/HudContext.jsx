@@ -25,6 +25,12 @@ export const HudProvider = ({ children }) => {
   });
 
   const [theme, setTheme] = useState('cyan');
+  const [gestureState, setGestureState] = useState({
+    active: false,
+    gesture: 'None',
+    action: 'None',
+    camera: 'Inactive'
+  });
   const [ping, setPing] = useState('--');
   const [link, setLink] = useState('OFFLINE');
   const [logLines, setLogLines] = useState([]);
@@ -89,6 +95,12 @@ export const HudProvider = ({ children }) => {
       } else if (payload.event === 'pong') {
         const latency = Math.round(performance.now() - lastPingTimeRef.current);
         setPing(latency);
+        return;
+      } else if (payload.event === 'GESTURE_UPDATE') {
+        setGestureState(payload.data);
+        if (payload.data.gesture && payload.data.gesture !== 'None') {
+          addLog(`Gesture: ${payload.data.gesture} -> ${payload.data.action}`, 'var(--gold)');
+        }
         return;
       }
       
@@ -196,7 +208,8 @@ export const HudProvider = ({ children }) => {
       setTerminalText,
       selectTheme,
       addLog,
-      triggerTerminalSubmit
+      triggerTerminalSubmit,
+      gestureState
     }}>
       {children}
     </HudContext.Provider>

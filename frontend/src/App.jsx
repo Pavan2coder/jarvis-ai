@@ -5,6 +5,7 @@ import BackgroundField from './components/BackgroundField';
 import VitalsWidget from './widgets/VitalsWidget';
 import ThemeSelectorWidget from './widgets/ThemeSelectorWidget';
 import ModulesWidget from './widgets/ModulesWidget';
+import GestureWidget from './widgets/GestureWidget';
 import LogWidget from './widgets/LogWidget';
 import ConsoleWidget from './widgets/ConsoleWidget';
 import ReferenceWidget from './widgets/ReferenceWidget';
@@ -62,6 +63,7 @@ const HudLayout = () => {
           <VitalsWidget />
           <ThemeSelectorWidget />
           <ModulesWidget />
+          <GestureWidget />
           <LogWidget />
         </aside>
 
