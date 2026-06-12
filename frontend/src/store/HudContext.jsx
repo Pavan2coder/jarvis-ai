@@ -121,8 +121,16 @@ export const HudProvider = ({ children }) => {
 
       ws.onmessage = (event) => {
         try {
-          const data = JSON.parse(event.data);
-          handleStateUpdate(data);
+          const payload = JSON.parse(event.data);
+          if (payload && payload.event) {
+            // Event wrapper schema detected: extract wrapped data object
+            if (payload.data) {
+              handleStateUpdate(payload.data);
+            }
+          } else {
+            // Raw state object fallback
+            handleStateUpdate(payload);
+          }
         } catch (e) {
           console.error('WebSocket parse error:', e);
         }

@@ -24,8 +24,19 @@ def set_ui(status, message="", command="", response="", wake_source=""):
     ui_state["wake_source"] = wake_source
 
     try:
+        from backend.websocket.events import dispatcher, JarvisEvent, JarvisEventType
         from backend.websocket.socket_manager import manager
-        manager.broadcast_sync(ui_state)
+        
+        event_name = JarvisEventType.SYSTEM_UPDATE
+        if status == "listening":
+            event_name = JarvisEventType.AI_LISTENING
+        elif status == "thinking":
+            event_name = JarvisEventType.AI_THINKING
+        elif status == "speaking":
+            event_name = JarvisEventType.AI_SPEAKING
+            
+        event = JarvisEvent(event_name, data=ui_state)
+        dispatcher.emit_sync(event, loop=manager.loop)
     except Exception as e:
-        logger.error(f"Failed to broadcast UI state update: {e}")
+        logger.error(f"Failed to emit UI state event: {e}")
 
