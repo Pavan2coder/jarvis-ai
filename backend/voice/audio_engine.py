@@ -6,8 +6,9 @@ import numpy as np
 import pyaudio
 import speech_recognition as sr
 import pyttsx3
-import config
-import ui_server
+
+from backend.core import config
+from backend.api import ui_server
 
 WAKE_PHRASES = ["jarvis", "hey jarvis", "ok jarvis", "okay jarvis",
                 "yo jarvis", "hi jarvis", "jarvis wake up", "jervis", "service"]
@@ -260,7 +261,7 @@ class AudioEngine:
                 print(f"  👤 You » {command}")
                 ui_server.set_ui("thinking", message="Processing...", command=command)
                 # Local import to avoid circular dependencies
-                import commands
+                from backend.assistant import commands
                 commands.handle_command(command)
             else:
                 speak("I didn't catch that. Call me again when you're ready.")
@@ -276,7 +277,7 @@ class AudioEngine:
         try:
             print(f"\n  ⚡  Direct command » {text}")
             ui_server.set_ui("thinking", message="Processing...", command=text)
-            import commands
+            from backend.assistant import commands
             commands.handle_command(text)
         except Exception as e:
             print(f"  ⚠️  Command error: {e}")

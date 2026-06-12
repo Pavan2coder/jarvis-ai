@@ -7,11 +7,11 @@ import webbrowser
 import ctypes
 import re
 
-import config
-import system_ops
-import brain
-import ui_server
-from audio_engine import speak, listen
+from backend.core import config
+from backend.system import system_ops
+from backend.assistant import brain
+from backend.api import ui_server
+from backend.voice.audio_engine import speak, listen
 
 # Pending shutdown/restart guard — must be confirmed before it fires
 pending_power = {"action": None}
@@ -216,13 +216,13 @@ def handle_system_command(command):
 
     # ── gesture control ──
     if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]):
-        import gesture_engine
+        from backend.system import gesture_engine
         speak("Starting hand gesture control. Initializing camera.")
         gesture_engine.start_gestures()
         return True
 
     if any(w in command for w in ["stop gesture control", "disable gestures", "turn off camera", "disable gesture control"]):
-        import gesture_engine
+        from backend.system import gesture_engine
         speak("Stopping hand gesture control. Releasing camera.")
         gesture_engine.stop_gestures()
         return True
@@ -386,7 +386,7 @@ def handle_command(command):
         speak(f"Goodbye {config.YOUR_NAME}. Jarvis signing off.")
         ui_server.set_ui("idle", message="Offline.")
         try:
-            import gesture_engine
+            from backend.system import gesture_engine
             gesture_engine.stop_gestures()
         except Exception:
             pass

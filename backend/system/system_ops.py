@@ -2,7 +2,8 @@ import os
 import sys
 import time
 import subprocess
-import config
+
+from backend.core import config
 
 # Pending shutdown/restart guard — must be confirmed before it fires
 pending_power = {"action": None}

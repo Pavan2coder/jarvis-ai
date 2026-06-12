@@ -1,7 +1,7 @@
 import os
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import system_ops
+from backend.system import system_ops
 
 ui_state = {
     "status": "idle",        # idle | listening | thinking | speaking
@@ -21,9 +21,10 @@ MINIMAL_HUD_FALLBACK = """<!DOCTYPE html>
 </html>"""
 
 def _hud_html():
-    """Serve the cinematic HUD from jarvis_hud.html (next to this script) if it
+    """Serve the cinematic HUD from jarvis_hud.html (in project root) if it
     exists; otherwise fall back to the embedded HUD so the app always works."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "jarvis_hud.html")
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    path = os.path.join(root_dir, "jarvis_hud.html")
     try:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
@@ -46,7 +47,7 @@ class UIHandler(BaseHTTPRequestHandler):
         elif self.path.startswith("/command?"):
             from urllib.parse import urlparse, parse_qs
             import threading
-            import commands
+            from backend.assistant import commands
             query = parse_qs(urlparse(self.path).query)
             text = query.get("text", [""])[0]
             if text:
@@ -62,7 +63,8 @@ class UIHandler(BaseHTTPRequestHandler):
             if clean_path in ("/", "/hud"):
                 clean_path = "/index.html"
             
-            dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "frontend", "dist")
+            root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+            dist_dir = os.path.join(root_dir, "frontend", "dist")
             file_path = os.path.join(dist_dir, clean_path.lstrip("/"))
             
             if os.path.exists(file_path) and os.path.isfile(file_path):

@@ -4,8 +4,9 @@ import math
 import cv2
 import mediapipe as mp
 import pyautogui
-import config
-import system_ops
+
+from backend.core import config
+from backend.system import system_ops
 
 # Shared singleton instance
 ENGINE = None
@@ -118,7 +119,7 @@ class GestureEngine:
                     elif (time.time() - self.palm_start_time > 1.5) and not self.activated_this_palm:
                         self.activated_this_palm = True
                         print("\n  🖐️  Open palm held! Activating Jarvis...")
-                        import audio_engine
+                        from backend.voice import audio_engine
                         if audio_engine.ENGINE is not None and not audio_engine.ENGINE.busy:
                             threading.Thread(target=audio_engine.ENGINE.activate, args=("gesture",), daemon=True).start()
                     
@@ -136,7 +137,7 @@ class GestureEngine:
                         self.last_mute_time = now
                         print("\n  ✊ Fist detected! Muting system audio...")
                         pyautogui.press('volumemute')
-                        import audio_engine
+                        from backend.voice import audio_engine
                         audio_engine.speak("Toggling mute.")
                     time.sleep(0.01)
                     continue
@@ -148,7 +149,7 @@ class GestureEngine:
                         self.last_play_time = now
                         print("\n  👍 Thumbs Up detected! Play/Pause Spotify...")
                         pyautogui.press('playpause')
-                        import audio_engine
+                        from backend.voice import audio_engine
                         audio_engine.speak("Media toggled.")
                     time.sleep(0.01)
                     continue

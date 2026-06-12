@@ -1,28 +1,11 @@
 import os
-import config
+from backend.core import config
+from backend.utils.dotenv import load_dotenv
 
 GEMINI_API_KEY = ""
 GEMINI_MODEL = config.GEMINI_MODEL
 
-def _load_dotenv():
-    """Tiny .env loader (no extra package). Reads KEY=VALUE lines."""
-    global GEMINI_API_KEY
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
-    if not os.path.exists(path):
-        return
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line or line.startswith("#") or "=" not in line:
-                    continue
-                key, _, val = line.partition("=")
-                val = val.strip().strip('"').strip("'")
-                os.environ.setdefault(key.strip(), val)
-    except Exception as e:
-        print(f"  ⚠️  Could not read .env: {e}")
-
-_load_dotenv()
+load_dotenv()
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # Short conversation memory so Jarvis can follow up
