@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useState, useEffect, useRef, useCallback } from 'react';
 import * as api from '../services/api';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 export const HudContext = createContext(null);
 
@@ -69,91 +70,78 @@ export const HudProvider = ({ children }) => {
     });
   }, []);
 
-  // Connect to backend WebSocket and poll stats
+  const offlineRef = useRef(false);
+
+  // Handle incoming websocket messages
+  const handleMessage = useCallback((payload) => {
+    let data = payload;
+    
+    // Check if it's wrapped in our Event system payload
+    if (payload && payload.event) {
+      // Log event updates to activity log
+      if (payload.event === 'COMMAND_EXECUTED') {
+        addLog(`CMD Executed: ${payload.data.command || ''}`, 'var(--green)');
+      } else if (payload.event === 'VOICE_DETECTED') {
+        addLog(`Voice detected (intensity: ${payload.data.intensity || ''})`, 'var(--cyan)');
+      }
+      
+      data = payload.data;
+    }
+
+    if (!data) return;
+
+    setUiState(data);
+
+    if (offlineRef.current) {
+      addLog('Reconnected to core', 'var(--green)');
+      offlineRef.current = false;
+    }
+
+    // Detect status shifts
+    const st = data.status || 'idle';
+    if (st !== lastStatusRef.current) {
+      if (st === 'active') {
+        const src = data.wake_source === 'clap' ? '👏 CLAP' : (data.wake_source === 'manual' ? '⌨ MANUAL' : '🎙 VOICE');
+        setBadgeText(`── ${src} ACTIVATED ──`);
+        setShowBadge(true);
+        setTimeout(() => setShowBadge(false), 2800);
+        addLog(`Activated via ${data.wake_source || 'voice'}`, 'var(--green)');
+      } else if (st === 'listening') {
+        addLog('Listening for command…', 'var(--gold)');
+      }
+      lastStatusRef.current = st;
+    }
+
+    // Detect commands
+    if (data.command && data.command !== lastCmdRef.current) {
+      addLog(`CMD: ${data.command}`, 'var(--gold)');
+      lastCmdRef.current = data.command;
+    }
+
+    // Detect responses
+    if (data.response && data.response !== lastResRef.current) {
+      addLog(`RSP: ${data.response.slice(0, 36)}...`, 'var(--green)');
+      lastResRef.current = data.response;
+    }
+  }, []);
+
+  // Initialize WebSocket connection hook
+  const { connectionStatus } = useWebSocket(handleMessage);
+
+  // Synchronize WebSocket status with HudContext state
   useEffect(() => {
-    let ws = null;
-    let reconnectTimer = null;
-    let offline = false;
-
-    const handleStateUpdate = (data) => {
-      setUiState(data);
-      setLink('LIVE');
-
-      if (offline) {
-        addLog('Reconnected to core', 'var(--green)');
-        offline = false;
+    setLink(connectionStatus);
+    if (connectionStatus === 'DOWN') {
+      setUiState(prev => ({ ...prev, status: 'idle', response: 'Run  python jarvis.py  to connect.' }));
+      if (!offlineRef.current) {
+        addLog('Core offline — start jarvis.py', 'var(--red)');
+        offlineRef.current = true;
       }
+    }
+  }, [connectionStatus]);
 
-      // Detect status shifts
-      const st = data.status || 'idle';
-      if (st !== lastStatusRef.current) {
-        if (st === 'active') {
-          const src = data.wake_source === 'clap' ? '👏 CLAP' : (data.wake_source === 'manual' ? '⌨ MANUAL' : '🎙 VOICE');
-          setBadgeText(`── ${src} ACTIVATED ──`);
-          setShowBadge(true);
-          setTimeout(() => setShowBadge(false), 2800);
-          addLog(`Activated via ${data.wake_source || 'voice'}`, 'var(--green)');
-        } else if (st === 'listening') {
-          addLog('Listening for command…', 'var(--gold)');
-        }
-        lastStatusRef.current = st;
-      }
-
-      // Detect commands
-      if (data.command && data.command !== lastCmdRef.current) {
-        addLog(`CMD: ${data.command}`, 'var(--gold)');
-        lastCmdRef.current = data.command;
-      }
-
-      // Detect responses
-      if (data.response && data.response !== lastResRef.current) {
-        addLog(`RSP: ${data.response.slice(0, 36)}...`, 'var(--green)');
-        lastResRef.current = data.response;
-      }
-    };
-
-    const connectWs = () => {
-      ws = new WebSocket('ws://localhost:5050/ws');
-
-      ws.onopen = () => {
-        setLink('LIVE');
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload && payload.event) {
-            // Event wrapper schema detected: extract wrapped data object
-            if (payload.data) {
-              handleStateUpdate(payload.data);
-            }
-          } else {
-            // Raw state object fallback
-            handleStateUpdate(payload);
-          }
-        } catch (e) {
-          console.error('WebSocket parse error:', e);
-        }
-      };
-
-      ws.onclose = () => {
-        setLink('DOWN');
-        setUiState(prev => ({ ...prev, status: 'idle', response: 'Run  python jarvis.py  to connect.' }));
-        if (!offline) {
-          addLog('Core offline — start jarvis.py', 'var(--red)');
-          offline = true;
-        }
-        if (reconnectTimer) clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(connectWs, 2000);
-      };
-
-      ws.onerror = (err) => {
-        ws.close();
-      };
-    };
-
-    connectWs();
-
+  // Statistics polling loop
+  useEffect(() => {
     const pollStats = async () => {
       const startTime = performance.now();
       try {
@@ -169,11 +157,6 @@ export const HudProvider = ({ children }) => {
     pollStats();
 
     return () => {
-      if (ws) {
-        ws.onclose = null;
-        ws.close();
-      }
-      if (reconnectTimer) clearTimeout(reconnectTimer);
       clearInterval(statsTimer);
     };
   }, []);
