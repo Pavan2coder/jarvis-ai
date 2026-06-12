@@ -11,13 +11,22 @@ class LLMRouter:
         self.system_prompt = config.SYSTEM_PROMPT
 
     def ask_llm(self, prompt: str) -> str:
-        """Centralized router that attempts to answer with Google Gemini,
-
-        and falls back to a local Ollama instance upon failures.
+        """Centralized router that attempts to answer with local personality rules,
+        Google Gemini, and falls back to a local Ollama instance upon failures.
         """
         logger.info(f"Routing prompt: '{prompt[:40]}...'")
         
-        # 1. Attempt to resolve via Gemini
+        # 1. Check local personality rules first
+        try:
+            from backend.assistant.personality import check_personality_rules
+            local_ans = check_personality_rules(prompt)
+            if local_ans:
+                logger.info("Success: Prompt resolved locally via Personality Engine.")
+                return local_ans
+        except Exception as e:
+            logger.error(f"Error in local personality check: {e}")
+            
+        # 2. Attempt to resolve via Gemini
         try:
             if brain.gemini_ready():
                 logger.info(f"Attempting to query Gemini API using model '{brain.GEMINI_MODEL}'...")
