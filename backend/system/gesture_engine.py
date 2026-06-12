@@ -16,6 +16,8 @@ class GestureEngine:
         self.running = False
         self.thread = None
         self.cap = None
+        self._latest_frame = None
+        self._frame_lock = threading.Lock()
         
         # MediaPipe initialization
         self.mp_hands = mp.solutions.hands
@@ -60,7 +62,16 @@ class GestureEngine:
         if self.thread:
             self.thread.join(timeout=1.0)
             self.thread = None
+        with self._frame_lock:
+            self._latest_frame = None
         print("  🎥  Gesture Control Engine stopped.")
+
+    def get_latest_frame(self):
+        """Thread-safe getter for the latest video frame."""
+        if not self.running or self._latest_frame is None:
+            return None
+        with self._frame_lock:
+            return self._latest_frame.copy()
 
     def _get_finger_states(self, landmarks):
         """Returns [thumb, index, middle, ring, pinky] booleans indicating if open."""
@@ -102,6 +113,10 @@ class GestureEngine:
             
             # Flip horizontally to match mirror movement
             frame = cv2.flip(frame, 1)
+            
+            # Cache latest frame thread-safely
+            with self._frame_lock:
+                self._latest_frame = frame.copy()
             h, w, _ = frame.shape
             
             # Convert color space for MediaPipe

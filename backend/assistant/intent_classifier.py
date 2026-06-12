@@ -87,8 +87,13 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
     confidence = 0.5
     entities = {}
     
-    # 1. SCREENSHOT INTENT
-    if any(phrase in normalized for phrase in ["screenshot", "screen capture", "take picture of screen", "capture screen"]):
+    # 1. CAMERA_CAPTURE INTENT
+    if any(phrase in normalized for phrase in ["take photo", "capture image", "save picture", "selfie", "take a photo", "take a selfie", "take picture", "take a picture"]):
+        intent = "camera_capture"
+        confidence = 0.95
+        
+    # 2. SCREENSHOT INTENT
+    elif any(phrase in normalized for phrase in ["screenshot", "screen capture", "take picture of screen", "capture screen"]):
         intent = "screenshot"
         confidence = 0.95
         

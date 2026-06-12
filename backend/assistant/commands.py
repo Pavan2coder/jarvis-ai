@@ -268,7 +268,19 @@ def handle_command(command):
     logger.info(f"Parsed intent: '{intent}' (confidence: {result['confidence']}) with entities: {entities}")
 
     # 2. Dispatch based on Intent
-    if intent == "screenshot":
+    if intent == "camera_capture":
+        session_memory.set("current_task", "camera_capture")
+        from backend.system import camera_ops
+        speak("Taking a photo. Please look at the camera.")
+        photo_path = camera_ops.capture_photo()
+        if photo_path:
+            filename = os.path.basename(photo_path)
+            speak(f"Photo captured and saved to Desktop as {filename}.")
+        else:
+            speak("I was unable to capture a photo. Make sure your camera is connected.")
+        return
+
+    elif intent == "screenshot":
         session_memory.set("current_task", "screenshot_capture")
         try:
             import pyautogui
