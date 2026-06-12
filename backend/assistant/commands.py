@@ -12,6 +12,7 @@ from backend.system import system_ops
 from backend.assistant import brain
 from backend.api import ui_server
 from backend.voice.audio_engine import speak, listen
+from backend.utils.logger import logger
 
 # Pending shutdown/restart guard — must be confirmed before it fires
 pending_power = {"action": None}
@@ -251,84 +252,19 @@ def handle_command(command):
         speak("I didn't catch that. Call me again.")
         return
 
-    # ── Close / kill an app or tab ──
-    if handle_close_command(command):
-        return
+    # Normalize log output
+    logger.info(f"Received user command: '{command}'")
 
-    # ── Spotify / Music ──
-    if handle_spotify_command(command):
-        return
+    # 1. Classify intent via NLP classifier
+    from backend.assistant.intent_classifier import classify_intent
+    result = classify_intent(command)
+    intent = result["intent"]
+    entities = result["entities"]
 
-    # ── Folders ──
-    if handle_folder_command(command):
-        return
+    logger.info(f"Parsed intent: '{intent}' (confidence: {result['confidence']}) with entities: {entities}")
 
-    # ── System control / app launch ──
-    if handle_system_command(command):
-        return
-
-    # ── Greetings ──
-    if any(w in command for w in ["hello", "hi ", "hey", "what's up"]):
-        speak(random.choice([
-            f"Hello {config.YOUR_NAME}! All systems go. How can I help?",
-            f"Hey {config.YOUR_NAME}! Ready and waiting.",
-            f"Good to see you, {config.YOUR_NAME}. What do you need?",
-        ]))
-
-    # ── Time ──
-    elif any(w in command for w in ["time", "clock"]):
-        now = datetime.datetime.now().strftime("%I:%M %p")
-        speak(f"It's {now}, {config.YOUR_NAME}.")
-
-    # ── Date ──
-    elif any(w in command for w in ["date", "today", "day is it"]):
-        today = datetime.datetime.now().strftime("%A, %B %d, %Y")
-        speak(f"Today is {today}.")
-
-    # ── Browser ──
-    elif any(w in command for w in ["open browser", "open chrome", "launch browser"]):
-        speak("Opening browser.")
-        webbrowser.open("https://www.google.com")
-
-    # ── Google Search ──
-    elif "search" in command or "google" in command:
-        query = (command.replace("search for","").replace("search","")
-                        .replace("google","").strip())
-        if not query:
-            speak("What should I search for?")
-            query = listen(timeout=5)
-        if query:
-            speak(f"Searching for {query}.")
-            webbrowser.open(f"https://www.google.com/search?q={query.replace(' ','+')}")
-
-    # ── YouTube ──
-    elif "youtube" in command:
-        query = (command.replace("youtube","").replace("play","")
-                        .replace("search","").replace("open","")
-                        .replace("launch","").replace("start","").strip())
-        if query:
-            speak(f"Opening YouTube for {query}.")
-            webbrowser.open(f"https://www.youtube.com/results?search_query={query.replace(' ','+')}")
-        else:
-            speak("Opening YouTube.")
-            webbrowser.open("https://www.youtube.com")
-
-    # ── Notepad ──
-    elif any(w in command for w in ["notepad", "text editor", "open notes"]):
-        speak("Opening Notepad.")
-        if sys.platform == "win32":   subprocess.Popen(["notepad.exe"])
-        elif sys.platform == "darwin": subprocess.Popen(["open", "-a", "TextEdit"])
-        else:                          subprocess.Popen(["gedit"])
-
-    # ── Calculator ──
-    elif any(w in command for w in ["calculator", "calc"]):
-        speak("Opening Calculator.")
-        if sys.platform == "win32":   subprocess.Popen(["calc.exe"])
-        elif sys.platform == "darwin": subprocess.Popen(["open", "-a", "Calculator"])
-        else:                          subprocess.Popen(["gnome-calculator"])
-
-    # ── Screenshot ──
-    elif any(w in command for w in ["screenshot", "screen capture"]):
+    # 2. Dispatch based on Intent
+    if intent == "screenshot":
         try:
             import pyautogui
             fname = f"screenshot_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
@@ -337,57 +273,135 @@ def handle_command(command):
             speak(f"Screenshot saved to Desktop as {fname}.")
         except ImportError:
             speak("Install pyautogui first. Run: pip install pyautogui")
+        return
 
-    # ── Volume ──
-    elif any(w in command for w in ["volume up", "louder", "increase volume", "raise volume", "increase the volume", "raise the volume", "turn up the volume", "turn up volume"]):
-        speak("Turning it up.")
-        try:
-            import pyautogui
-            for _ in range(5): pyautogui.press('volumeup')
-        except: speak("Install pyautogui for volume control.")
-
-    elif any(w in command for w in ["volume down", "quieter", "lower volume", "decrease volume", "reduce volume", "decrease the volume", "lower the volume", "reduce the volume", "turn down the volume", "turn down volume"]):
-        speak("Turning it down.")
-        try:
-            import pyautogui
-            for _ in range(5): pyautogui.press('volumedown')
-        except: speak("Install pyautogui for volume control.")
-
-    elif any(w in command for w in ["mute", "silence"]):
-        speak("Muting.")
-        try:
-            import pyautogui
-            pyautogui.press('volumemute')
-        except: pass
-
-    # ── Joke ──
-    elif any(w in command for w in ["joke", "funny", "make me laugh"]):
-        speak(random.choice(config.jokes))
-
-    # ── Weather ──
-    elif any(w in command for w in ["weather", "temperature", "forecast"]):
-        speak(f"Opening weather for {config.YOUR_CITY}.")
-        webbrowser.open(f"https://www.google.com/search?q=weather+{config.YOUR_CITY.replace(' ','+')}")
-
-    # ── System Info (CPU / memory / GPU) ──
-    elif any(w in command for w in ["cpu", "processor", "ram", "memory",
-                                     "gpu", "graphics", "video card", "system info"]):
+    elif intent == "diagnostics":
         speak(system_ops.system_stats_report(command))
+        return
 
-    # ── IP ──
-    elif "ip" in command:
-        import socket
-        try:
-            ip = socket.gethostbyname(socket.gethostname())
-            speak(f"Your local IP is {ip}.")
-        except: speak("Couldn't get your IP.")
+    elif intent == "close_app":
+        app_name = entities.get("app_name")
+        if app_name:
+            if any(w in app_name for w in config.WEB_TAB_WORDS) and "browser" not in app_name:
+                if system_ops.close_active_browser_tab():
+                    speak(f"Closing the {app_name} tab.")
+                else:
+                    speak("Install pyautogui so I can close browser tabs. Run pip install pyautogui.")
+            else:
+                procs = config.CLOSE_PROCESSES.get(app_name)
+                if procs is None:
+                    procs = [app_name + ".exe"]
+                if system_ops.kill_processes(procs):
+                    speak(f"Closed {app_name}.")
+                else:
+                    speak(f"{app_name} doesn't seem to be running.")
+        else:
+            speak("Which app would you like to close?")
+        return
 
-    # ── Who are you ──
-    elif any(w in command for w in ["who are you", "what are you", "introduce"]):
-        speak(f"I am Jarvis — Just A Rather Very Intelligent System. Personal AI assistant for {config.YOUR_NAME}.")
+    elif intent == "open_app":
+        app_name = entities.get("app_name")
+        if app_name:
+            # Check folder paths first
+            if app_name in config.FOLDERS:
+                path = config.FOLDERS[app_name]
+                if os.path.exists(path):
+                    speak(f"Opening your {app_name} folder.")
+                    open_folder(path)
+                return
+            # Spotify playlist checks
+            if app_name == "spotify" or app_name == "music":
+                handle_spotify_command(command)
+                return
+            # Launch app
+            if system_ops.launch_app(app_name):
+                speak(f"Opening {app_name}.")
+            else:
+                speak(f"I couldn't open {app_name}.")
+        else:
+            speak("Which app would you like to open?")
+        return
 
-    # ── Shutdown Jarvis ──
-    elif any(w in command for w in ["goodbye", "bye", "exit", "quit", "shutdown jarvis"]):
+    elif intent == "search":
+        query = entities.get("query")
+        if query:
+            speak(f"Searching for {query}.")
+            webbrowser.open(f"https://www.google.com/search?q={query.replace(' ','+')}")
+        else:
+            speak("What should I search for?")
+        return
+
+    elif intent == "system_control":
+        action = entities.get("action")
+        val = entities.get("value")
+        global pending_power
+        
+        if action == "set_volume" and val is not None:
+            if system_ops.set_volume_percent(val):
+                speak(f"Volume set to {val} percent.")
+            else:
+                speak("Install pycaw for volume control. Run pip install pycaw.")
+        elif action == "volume_up":
+            speak("Turning it up.")
+            try:
+                import pyautogui
+                for _ in range(5): pyautogui.press('volumeup')
+            except: speak("Volume up failed.")
+        elif action == "volume_down":
+            speak("Turning it down.")
+            try:
+                import pyautogui
+                for _ in range(5): pyautogui.press('volumedown')
+            except: speak("Volume down failed.")
+        elif action == "mute":
+            speak("Muting.")
+            try:
+                import pyautogui
+                pyautogui.press('volumemute')
+            except: pass
+            
+        elif action == "set_brightness" and val is not None:
+            speak(f"Setting brightness to {val} percent." if system_ops.set_brightness_percent(val)
+                  else "I can't control brightness on this display.")
+        elif action == "brightness_up":
+            speak("Setting brightness to maximum." if system_ops.set_brightness_percent(100) else "I can't control brightness.")
+        elif action == "brightness_down":
+            speak("Dimming the screen." if system_ops.set_brightness_percent(30) else "I can't control brightness.")
+            
+        elif action == "shutdown":
+            pending_power = {"action": "shutdown"}
+            speak("Are you sure you want to shut down? Say yes to confirm.")
+        elif action == "restart":
+            pending_power = {"action": "restart"}
+            speak("Are you sure you want to restart? Say yes to confirm.")
+        elif action == "lock":
+            speak("Locking your PC.")
+            try: ctypes.windll.user32.LockWorkStation()
+            except Exception: pass
+        elif action == "sleep":
+            speak("Putting the computer to sleep.")
+            try: subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
+            except Exception: pass
+            
+        elif action == "enable_gestures":
+            from backend.system import gesture_engine
+            speak("Starting hand gesture control. Initializing camera.")
+            gesture_engine.start_gestures()
+        elif action == "disable_gestures":
+            from backend.system import gesture_engine
+            speak("Stopping hand gesture control. Releasing camera.")
+            gesture_engine.stop_gestures()
+        return
+
+    elif intent == "greeting":
+        speak(random.choice([
+            f"Hello {config.YOUR_NAME}! All systems go. How can I help?",
+            f"Hey {config.YOUR_NAME}! Ready and waiting.",
+            f"Good to see you, {config.YOUR_NAME}. What do you need?",
+        ]))
+        return
+
+    elif intent == "exit":
         speak(f"Goodbye {config.YOUR_NAME}. Jarvis signing off.")
         ui_server.set_ui("idle", message="Offline.")
         try:
@@ -397,9 +411,43 @@ def handle_command(command):
             pass
         os._exit(0)
 
+    # 3. Fallbacks for existing helper functions
+    if handle_folder_command(command):
+        return
+    if handle_spotify_command(command):
+        return
+    if handle_system_command(command):
+        return
+
+    # Custom checks for Time, Date, Weather, Jokes etc.
+    if any(w in command for w in ["time", "clock"]):
+        now = datetime.datetime.now().strftime("%I:%M %p")
+        speak(f"It's {now}, {config.YOUR_NAME}.")
+        return
+    if any(w in command for w in ["date", "today", "day is it"]):
+        today = datetime.datetime.now().strftime("%A, %B %d, %Y")
+        speak(f"Today is {today}.")
+        return
+    if any(w in command for w in ["weather", "temperature", "forecast"]):
+        speak(f"Opening weather for {config.YOUR_CITY}.")
+        webbrowser.open(f"https://www.google.com/search?q=weather+{config.YOUR_CITY.replace(' ','+')}")
+        return
+    if any(w in command for w in ["joke", "funny", "make me laugh"]):
+        speak(random.choice(config.jokes))
+        return
+    if "ip" in command:
+        import socket
+        try:
+            ip = socket.gethostbyname(socket.gethostname())
+            speak(f"Your local IP is {ip}.")
+        except: speak("Couldn't get your IP.")
+        return
+    if any(w in command for w in ["who are you", "what are you", "introduce"]):
+        speak(f"I am Jarvis — Just A Rather Very Intelligent System. Personal AI assistant for {config.YOUR_NAME}.")
+        return
+
     # ── Anything else → ask the Centralized LLM Router ──
-    else:
-        ui_server.set_ui("thinking", message="Thinking...", command=command)
-        from backend.assistant import llm_router
-        answer = llm_router.ask_llm(command)
-        speak(answer)
+    ui_server.set_ui("thinking", message="Thinking...", command=command)
+    from backend.assistant import llm_router
+    answer = llm_router.ask_llm(command)
+    speak(answer)
