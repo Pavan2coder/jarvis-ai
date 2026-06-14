@@ -275,7 +275,7 @@ def handle_command(command):
         if not query:
             speak("What would you like me to search for?")
             return
-        from backend.system import browser_control
+        from backend.automation import browser_control
         if action == "search_google":
             speak(f"Searching Google for {query}.")
             browser_control.automate_google_search(query)
