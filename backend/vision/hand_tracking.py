@@ -100,10 +100,21 @@ class HandTracker:
                 iy = int(landmarks[8].y * h)
                 
                 # Check active gesture and render custom visual indicators
+                from backend.vision.profile_manager import profile_manager
+                mapping = profile_manager.get_mapping_for_gesture("Index Point")
+                is_laser = (mapping.get("type") == "mouse" and mapping.get("target") == "laser_pointer")
+                
                 if active_gesture == "Index Point":
-                    # Glowing neon blue dot + outer ring
-                    cv2.circle(frame, (ix, iy), 6, cyan, -1, cv2.LINE_AA)
-                    cv2.circle(frame, (ix, iy), 14, cyan, 1, cv2.LINE_AA)
+                    if is_laser:
+                        # Glowing red holographic laser pointer Core + Halo
+                        red = (0, 0, 255)
+                        cv2.circle(frame, (ix, iy), 6, (255, 255, 255), -1, cv2.LINE_AA)
+                        cv2.circle(frame, (ix, iy), 12, red, -1, cv2.LINE_AA)
+                        cv2.circle(frame, (ix, iy), 22, red, 2, cv2.LINE_AA)
+                    else:
+                        # Glowing neon blue dot + outer ring
+                        cv2.circle(frame, (ix, iy), 6, cyan, -1, cv2.LINE_AA)
+                        cv2.circle(frame, (ix, iy), 14, cyan, 1, cv2.LINE_AA)
                 elif active_gesture == "Index Pinch":
                     # Orange crosshair glow for click/drag state
                     cv2.circle(frame, (ix, iy), 8, hot_orange, -1, cv2.LINE_AA)
@@ -119,7 +130,7 @@ class HandTracker:
                     cv2.arrowedLine(frame, (ix, iy + 10), (ix, iy + 28), gold, 2, tipLength=0.3)
                     
         # 3. Premium Glassmorphic HUD overlay
-        hud_w, hud_h = 240, 80
+        hud_w, hud_h = 240, 96
         hud_x, hud_y = 12, 12
         
         # Background alpha blend (semi-transparent glassmorphism look)
@@ -131,16 +142,21 @@ class HandTracker:
         cv2.rectangle(frame, (hud_x, hud_y), (hud_x + hud_w, hud_y + hud_h), cyan, 1, cv2.LINE_AA)
         
         # Content texts
-        cv2.putText(frame, "J.A.R.V.I.S. VISION OS", (hud_x + 10, hud_y + 18), 
+        cv2.putText(frame, "J.A.R.V.I.S. VISION OS", (hud_x + 10, hud_y + 16), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.4, cyan, 1, cv2.LINE_AA)
-        cv2.line(frame, (hud_x + 10, hud_y + 24), (hud_x + hud_w - 10, hud_y + 24), (100, 100, 100), 1)
+        cv2.line(frame, (hud_x + 10, hud_y + 21), (hud_x + hud_w - 10, hud_y + 21), (100, 100, 100), 1)
         
+        # Active profile mode
+        from backend.vision.profile_manager import profile_manager
+        profile_name = profile_manager.profiles.get(profile_manager.active_profile, {}).get("name", "Work Mode")
+        cv2.putText(frame, f"MODE   : {profile_name.upper()}", (hud_x + 10, hud_y + 36), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, cyan, 1, cv2.LINE_AA)
         # FPS
-        cv2.putText(frame, f"FPS: {int(self.smooth_fps)}", (hud_x + 10, hud_y + 39), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, neon_green, 1, cv2.LINE_AA)
+        cv2.putText(frame, f"FPS    : {int(self.smooth_fps)}", (hud_x + 10, hud_y + 53), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, neon_green, 1, cv2.LINE_AA)
         # Gesture Name
-        cv2.putText(frame, f"GESTURE: {active_gesture.upper()}", (hud_x + 10, hud_y + 55), 
+        cv2.putText(frame, f"GESTURE: {active_gesture.upper()}", (hud_x + 10, hud_y + 70), 
                     cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
         # Action Name
-        cv2.putText(frame, f"ACTION : {active_action.upper()}", (hud_x + 10, hud_y + 70), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, gold, 1, cv2.LINE_AA)
+        cv2.putText(frame, f"ACTION : {active_action.upper()}", (hud_x + 10, hud_y + 86), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, gold, 1, cv2.LINE_AA)

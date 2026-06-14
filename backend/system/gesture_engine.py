@@ -7,6 +7,7 @@ from backend.vision.hand_tracking import HandTracker
 from backend.vision.gesture_recognizer import classify_gesture
 from backend.vision.gesture_actions import GestureActionsManager
 from backend.vision.virtual_mouse import VirtualMouse
+from backend.vision.profile_manager import profile_manager
 
 # Shared singleton instance
 ENGINE = None
@@ -103,22 +104,27 @@ class GestureEngine:
                 )
                 
                 if not triggered:
-                    # Execute continuous mouse movements and gestures
-                    if gesture_name == "Peace Sign" and action_name == "Scroll":
-                        self.mouse.handle_scrolling(landmarks)
-                        self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
-                    elif gesture_name == "Index Pinch":
-                        self.mouse.move_cursor(landmarks[8])
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
-                        self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
-                    elif gesture_name == "Index Point":
-                        self.mouse.reset_scroll()
-                        self.mouse.move_cursor(landmarks[8])
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
+                    # Execute continuous mouse movements and gestures dynamically based on profile mappings
+                    mapping = profile_manager.get_mapping_for_gesture(gesture_name)
+                    m_type = mapping.get("type", "none")
+                    target = mapping.get("target", "none")
+                    
+                    if m_type == "mouse":
+                        if target == "scroll":
+                            self.mouse.handle_scrolling(landmarks)
+                        elif target in ("move_cursor", "laser_pointer"):
+                            self.mouse.reset_scroll()
+                            self.mouse.move_cursor(landmarks[8])
+                            self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
+                        elif target == "click_and_drag":
+                            self.mouse.reset_scroll()
+                            self.mouse.move_cursor(landmarks[8])
+                            self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
                     else:
+                        # Reset continuous tracking components if not in mouse mode
                         self.mouse.reset_scroll()
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
+                        self.mouse.release_mouse_safety()
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
             else:
                 # Reset tracking states if hands disappear
