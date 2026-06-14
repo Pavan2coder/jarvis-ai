@@ -268,7 +268,17 @@ def handle_command(command):
     logger.info(f"Parsed intent: '{intent}' (confidence: {result['confidence']}) with entities: {entities}")
 
     # 2. Dispatch based on Intent
-    if intent == "browser_automation":
+    if intent == "workflow_automation":
+        workflow_id = entities.get("workflow_id")
+        if workflow_id:
+            session_memory.set("current_task", f"workflow_{workflow_id}")
+            from backend.automation.workflow_engine import workflow_engine
+            workflow_engine.run_workflow_by_id(workflow_id)
+        else:
+            speak("I couldn't identify which workflow setup you requested.")
+        return
+
+    elif intent == "browser_automation":
         session_memory.set("current_task", "browser_automation")
         action = entities.get("action")
         query = entities.get("query", "")

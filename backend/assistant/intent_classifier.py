@@ -97,7 +97,18 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         intent = "screenshot"
         confidence = 0.95
         
-    # 3. BROWSER_AUTOMATION INTENT
+    # 3. WORKFLOW_AUTOMATION INTENT
+    elif any(phrase in normalized for phrase in ["prepare coding setup", "prepare study mode", "prepare meeting mode"]):
+        intent = "workflow_automation"
+        confidence = 0.98
+        if "coding setup" in normalized:
+            entities["workflow_id"] = "coding_setup"
+        elif "study mode" in normalized:
+            entities["workflow_id"] = "study_mode"
+        elif "meeting mode" in normalized:
+            entities["workflow_id"] = "meeting_mode"
+            
+    # 4. BROWSER_AUTOMATION INTENT
     elif any(x in normalized for x in ["open youtube and search", "search google for", "open github and search"]):
         intent = "browser_automation"
         confidence = 0.98
