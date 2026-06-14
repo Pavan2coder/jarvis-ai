@@ -92,7 +92,10 @@ class GestureEngine:
                 landmarks = results.multi_hand_landmarks[0].landmark
                 
                 # Classify hand landmarks to gesture & action
-                gesture_name, action_name = classify_gesture(landmarks)
+                raw_gesture, raw_action = classify_gesture(landmarks)
+                
+                # Stabilize gestures using history voting
+                gesture_name, action_name = self.actions.stabilize_gesture_and_action(raw_gesture, raw_action)
                 
                 # Try executing discrete command actions (Mute, Play/Pause, Wake)
                 triggered = self.actions.execute_discrete_actions(
@@ -106,19 +109,20 @@ class GestureEngine:
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
                     elif gesture_name == "Index Pinch":
                         self.mouse.move_cursor(landmarks[8])
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8])
+                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
                     elif gesture_name == "Index Point":
                         self.mouse.reset_scroll()
                         self.mouse.move_cursor(landmarks[8])
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8])
+                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
                     else:
                         self.mouse.reset_scroll()
-                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8])
+                        self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
                         self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
             else:
                 # Reset tracking states if hands disappear
+                self.actions.reset_stabilizer()
                 self.mouse.reset_scroll()
                 self.mouse.release_mouse_safety()
                 self.actions.emit_status("None", "None", self.running, self.camera_status)

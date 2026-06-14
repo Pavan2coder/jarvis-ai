@@ -14,11 +14,20 @@ class HandTracker:
         self.prev_time = time.time()
         
     def process_frame(self, frame):
-        """Converts frame to RGB and processes it through MediaPipe Hands."""
+        """Converts frame to RGB, resizes for speed optimization, and processes it."""
         if frame is None:
             return None
+            
+        h, w, _ = frame.shape
+        # Downscale to width 640 for faster MediaPipe processing (preserves aspect ratio)
+        if w > 640:
+            scale = 640.0 / w
+            processing_frame = cv2.resize(frame, (640, int(h * scale)))
+        else:
+            processing_frame = frame
+            
         # Convert color space for MediaPipe
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        rgb_frame = cv2.cvtColor(processing_frame, cv2.COLOR_BGR2RGB)
         return self.hands.process(rgb_frame)
         
     def get_fps(self) -> float:
@@ -29,39 +38,109 @@ class HandTracker:
         return fps
         
     def draw_overlays(self, frame, results, active_gesture: str, active_action: str, fps: float):
-        """Draws tracking boxes, MediaPipe landmarks, active gesture, and system stats."""
+        """Draws a premium holographic HUD, custom hand skeletons, and status indicators."""
         if frame is None:
             return
             
         h, w, _ = frame.shape
         
-        # 1. Draw virtual mouse active tracking box bounds (25% to 75% width, 25% to 65% height)
+        # Smooth FPS calculation using EMA (exponential moving average)
+        if not hasattr(self, "smooth_fps"):
+            self.smooth_fps = fps
+        else:
+            self.smooth_fps = self.smooth_fps * 0.9 + fps * 0.1
+            
+        # Colors (BGR)
+        cyan = (255, 209, 58)      # #3AD1FF
+        neon_green = (136, 255, 57) # #39FF88
+        hot_orange = (0, 128, 255)  # #FF8000
+        gold = (0, 215, 255)       # #FFD700
+        hud_bg = (18, 9, 2)        # Very dark blue/black
+        
+        # 1. Draw Active Area with styled corner brackets (Cyberpunk theme)
         active_x_start, active_x_end = int(w * 0.25), int(w * 0.75)
         active_y_start, active_y_end = int(h * 0.25), int(h * 0.65)
-        cv2.rectangle(frame, (active_x_start, active_y_start), (active_x_end, active_y_end), (58, 209, 255), 2)
-        cv2.putText(frame, "ACTIVE AREA", (active_x_start + 5, active_y_start - 8), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (58, 209, 255), 1, cv2.LINE_AA)
+        
+        # Draw faint connection box
+        cv2.rectangle(frame, (active_x_start, active_y_start), (active_x_end, active_y_end), (100, 100, 100), 1, cv2.LINE_AA)
+        
+        # Draw corners
+        length = 20
+        # Top-Left
+        cv2.line(frame, (active_x_start, active_y_start), (active_x_start + length, active_y_start), cyan, 2)
+        cv2.line(frame, (active_x_start, active_y_start), (active_x_start, active_y_start + length), cyan, 2)
+        # Top-Right
+        cv2.line(frame, (active_x_end, active_y_start), (active_x_end - length, active_y_start), cyan, 2)
+        cv2.line(frame, (active_x_end, active_y_start), (active_x_end, active_y_start + length), cyan, 2)
+        # Bottom-Left
+        cv2.line(frame, (active_x_start, active_y_end), (active_x_start + length, active_y_end), cyan, 2)
+        cv2.line(frame, (active_x_start, active_y_end), (active_x_start, active_y_end - length), cyan, 2)
+        # Bottom-Right
+        cv2.line(frame, (active_x_end, active_y_end), (active_x_end - length, active_y_end), cyan, 2)
+        cv2.line(frame, (active_x_end, active_y_end), (active_x_end, active_y_end - length), cyan, 2)
+        
+        cv2.putText(frame, "TRACKING BOUNDS", (active_x_start + 5, active_y_start - 8), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, cyan, 1, cv2.LINE_AA)
                     
-        # 2. Draw hand skeletons if landmarks are present
+        # 2. Draw Hand skeleton and state-driven virtual cursor
         if results and results.multi_hand_landmarks:
             for hand_lms in results.multi_hand_landmarks:
+                # Custom drawings for cyberpunk skeleton look
                 self.mp_draw.draw_landmarks(
                     frame, 
                     hand_lms, 
                     self.mp_hands.HAND_CONNECTIONS,
-                    self.mp_draw.DrawingSpec(color=(57, 255, 136), thickness=2, circle_radius=2),
-                    self.mp_draw.DrawingSpec(color=(0, 240, 255), thickness=2, circle_radius=2)
+                    self.mp_draw.DrawingSpec(color=neon_green, thickness=2, circle_radius=2),
+                    self.mp_draw.DrawingSpec(color=cyan, thickness=1, circle_radius=1)
                 )
                 
-        # 3. Print FPS and Gesture HUD overlay text
-        hud_bg_color = (18, 9, 2)
-        # Background bars
-        cv2.rectangle(frame, (8, 8), (220, 70), hud_bg_color, -1)
-        cv2.rectangle(frame, (8, 8), (220, 70), (58, 209, 255), 1)
+                # Render cursor at index finger tip (landmark 8)
+                landmarks = hand_lms.landmark
+                ix = int(landmarks[8].x * w)
+                iy = int(landmarks[8].y * h)
+                
+                # Check active gesture and render custom visual indicators
+                if active_gesture == "Index Point":
+                    # Glowing neon blue dot + outer ring
+                    cv2.circle(frame, (ix, iy), 6, cyan, -1, cv2.LINE_AA)
+                    cv2.circle(frame, (ix, iy), 14, cyan, 1, cv2.LINE_AA)
+                elif active_gesture == "Index Pinch":
+                    # Orange crosshair glow for click/drag state
+                    cv2.circle(frame, (ix, iy), 8, hot_orange, -1, cv2.LINE_AA)
+                    cv2.circle(frame, (ix, iy), 18, hot_orange, 2, cv2.LINE_AA)
+                    cv2.line(frame, (ix - 25, iy), (ix + 25, iy), hot_orange, 1, cv2.LINE_AA)
+                    cv2.line(frame, (ix, iy - 25), (ix, iy + 25), hot_orange, 1, cv2.LINE_AA)
+                elif active_gesture == "Peace Sign" and active_action == "Scroll":
+                    # Yellow scroll indicators
+                    cv2.circle(frame, (ix, iy), 7, gold, -1, cv2.LINE_AA)
+                    cv2.circle(frame, (ix, iy), 16, gold, 1, cv2.LINE_AA)
+                    # Draw vertical indicator arrows
+                    cv2.arrowedLine(frame, (ix, iy - 10), (ix, iy - 28), gold, 2, tipLength=0.3)
+                    cv2.arrowedLine(frame, (ix, iy + 10), (ix, iy + 28), gold, 2, tipLength=0.3)
+                    
+        # 3. Premium Glassmorphic HUD overlay
+        hud_w, hud_h = 240, 80
+        hud_x, hud_y = 12, 12
         
-        cv2.putText(frame, f"FPS: {int(fps)}", (16, 26), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (39, 255, 136), 1, cv2.LINE_AA)
-        cv2.putText(frame, f"GESTURE: {active_gesture.upper()}", (16, 44), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA)
-        cv2.putText(frame, f"ACTION: {active_action.upper()}", (16, 60), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (58, 209, 255), 1, cv2.LINE_AA)
+        # Background alpha blend (semi-transparent glassmorphism look)
+        overlay = frame.copy()
+        cv2.rectangle(overlay, (hud_x, hud_y), (hud_x + hud_w, hud_y + hud_h), hud_bg, -1)
+        cv2.addWeighted(overlay, 0.65, frame, 0.35, 0, frame)
+        
+        # Border
+        cv2.rectangle(frame, (hud_x, hud_y), (hud_x + hud_w, hud_y + hud_h), cyan, 1, cv2.LINE_AA)
+        
+        # Content texts
+        cv2.putText(frame, "J.A.R.V.I.S. VISION OS", (hud_x + 10, hud_y + 18), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, cyan, 1, cv2.LINE_AA)
+        cv2.line(frame, (hud_x + 10, hud_y + 24), (hud_x + hud_w - 10, hud_y + 24), (100, 100, 100), 1)
+        
+        # FPS
+        cv2.putText(frame, f"FPS: {int(self.smooth_fps)}", (hud_x + 10, hud_y + 39), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, neon_green, 1, cv2.LINE_AA)
+        # Gesture Name
+        cv2.putText(frame, f"GESTURE: {active_gesture.upper()}", (hud_x + 10, hud_y + 55), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
+        # Action Name
+        cv2.putText(frame, f"ACTION : {active_action.upper()}", (hud_x + 10, hud_y + 70), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, gold, 1, cv2.LINE_AA)

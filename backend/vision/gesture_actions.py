@@ -14,6 +14,26 @@ class GestureActionsManager:
         self.current_gesture = "None"
         self.current_action = "None"
         
+        # Stabilizer history queue (stores (gesture, action) tuples)
+        self.history = []
+        self.history_len = 5
+
+    def stabilize_gesture_and_action(self, gesture: str, action: str) -> tuple:
+        """Appends gesture/action pair to history buffer and returns the majority voted pair."""
+        self.history.append((gesture, action))
+        if len(self.history) > self.history_len:
+            self.history.pop(0)
+            
+        counts = {}
+        for item in self.history:
+            counts[item] = counts.get(item, 0) + 1
+            
+        return max(counts, key=counts.get)
+        
+    def reset_stabilizer(self):
+        """Clears the stabilizer history queue to prevent lag on hand loss/re-acquisition."""
+        self.history.clear()
+        
     def emit_status(self, gesture: str, action: str, engine_running: bool, camera_status: str):
         """Sends a WebSocket message back to the HUD on status/gesture changes."""
         if gesture == self.current_gesture and action == self.current_action:
