@@ -9,6 +9,7 @@ import pyttsx3
 
 from backend.core import config
 from backend.api import ui_server
+from backend.audio import CalibrationManager, AdaptiveClapDetector
 
 WAKE_PHRASES = ["jarvis", "hey jarvis", "ok jarvis", "okay jarvis",
                 "yo jarvis", "hi jarvis", "jarvis wake up", "jervis", "service"]
@@ -139,102 +140,19 @@ class SpectralNoiseReducer:
             return audio_data
 
 
-class AdaptiveClapDetector:
-    def __init__(self, sensitivity: float = 0.5):
-        self.sensitivity = sensitivity
-        self.ambient_peak = 1000.0
-        self.ambient_mean = 100.0
-        self.clap_times = []
-        self.last_clap_time = 0.0
-        self.cooldown = config.CLAP_COOLDOWN
-        self.window = config.DOUBLE_CLAP_WINDOW
-        self.pending_candidate = None
-
-    def calibrate(self, samples_peaks: list, samples_means: list):
-        if samples_peaks:
-            self.ambient_peak = max(400.0, float(np.median(samples_peaks)))
-        if samples_means:
-            self.ambient_mean = max(40.0, float(np.median(samples_means)))
-
-    def process_frame(self, mean: float, peak: float) -> bool:
-        now = time.time()
-        
-        # 1. Adapt running ambient levels
-        is_impulsive = peak > (self.ambient_peak * 2.5)
-        if not is_impulsive:
-            self.ambient_peak = 0.98 * self.ambient_peak + 0.02 * peak
-            self.ambient_mean = 0.98 * self.ambient_mean + 0.02 * mean
-        else:
-            self.ambient_peak = 0.999 * self.ambient_peak + 0.001 * peak
-            self.ambient_mean = 0.999 * self.ambient_mean + 0.001 * mean
-            
-        self.ambient_peak = max(400.0, self.ambient_peak)
-        self.ambient_mean = max(40.0, self.ambient_mean)
-
-        # 2. Noise-dependent threshold multiplier scaling
-        noise_factor = min(2.0, max(1.0, self.ambient_mean / 100.0))
-        multiplier = (12.0 - (self.sensitivity * 9.0)) * noise_factor
-        clap_threshold = max(3500.0, self.ambient_peak * multiplier)
-        
-        # 3. Clap Decay envelope validation (from previous frame candidate)
-        is_confirmed_clap = False
-        if self.pending_candidate is not None:
-            candidate_peak = self.pending_candidate["peak"]
-            # Assert decay (must drop by > 50% in amplitude)
-            if peak < 0.5 * candidate_peak:
-                is_confirmed_clap = True
-            self.pending_candidate = None
-
-        # 4. Clap Signature Validation
-        is_loud_enough = peak > clap_threshold
-        crest_factor = peak / max(1.0, mean)
-        required_crest = 8.5 * noise_factor
-        is_impulsive_crest = crest_factor > required_crest
-        is_not_sustained = mean < (self.ambient_mean * 4.5 * noise_factor)
-        
-        # Mark as pending candidate if it matches the current frame impulse signature
-        if is_loud_enough and is_impulsive_crest and is_not_sustained:
-            self.pending_candidate = {"time": now, "peak": peak, "mean": mean}
-        
-        if is_confirmed_clap:
-            if (now - self.last_clap_time) > 0.15:
-                self.last_clap_time = now
-                self.clap_times = [t for t in self.clap_times if now - t < self.window]
-                self.clap_times.append(now)
-                
-                # Check for double clap pattern
-                if len(self.clap_times) >= 2:
-                    gap = self.clap_times[-1] - self.clap_times[-2]
-                    if self.cooldown < gap < self.window:
-                        self.clap_times.clear()
-                        return True
-                        
-        return False
-
-
 class AudioEngine:
     def __init__(self):
         self.pa = pyaudio.PyAudio()
         # Probe every input-capable device, read a chunk from each, and keep the first that works.
         self.stream = self._open_working_input()
         
-        # Noise profile states
-        self.calibrated_ambient = 80.0
-        self.short_term_noise = 80.0
-        self.long_term_noise = 80.0
-        self.ambient = 80.0
-        
-        # Configurable thresholds
-        self.activation_threshold = config.SPEECH_THRESHOLD
-        self.deactivation_threshold = config.SPEECH_THRESHOLD * 0.7
-        self.speech_thr = self.activation_threshold  # compatibility layer
+        # Audio package DSP modules
+        self.calibration = CalibrationManager()
+        self.clap_detector = AdaptiveClapDetector(sensitivity=config.CLAP_SENSITIVITY)
+        self.clap_thr = self.clap_detector.ambient_peak * 3.0
         
         # Noise reducer
         self.noise_reducer = SpectralNoiseReducer(config.CHUNK, config.SAMPLE_RATE)
-        
-        # Initialize Adaptive Clap Detector
-        self.clap_detector = AdaptiveClapDetector(sensitivity=config.CLAP_SENSITIVITY)
-        self.clap_thr = self.clap_detector.ambient_peak * 3.0
         
         self.busy = False           # True while handling a command
         self.clap_times = []
@@ -244,9 +162,70 @@ class AudioEngine:
         # chunks of silence that mark the end of a phrase (~0.7s)
         self.silence_chunks = max(6, int(0.7 * config.SAMPLE_RATE / config.CHUNK))
         self.start_chunks = max(1, int(config.SAMPLE_RATE / config.CHUNK))   # ~1s to start
+
+    @property
+    def ambient(self):
+        return self.calibration.ambient
+    
+    @ambient.setter
+    def ambient(self, val):
+        self.calibration.ambient = val
         
-        # Recalibration tracker
-        self.stable_ambient_time = 0.0
+    @property
+    def speech_thr(self):
+        return self.calibration.activation_threshold
+    
+    @speech_thr.setter
+    def speech_thr(self, val):
+        self.calibration.activation_threshold = val
+
+    @property
+    def activation_threshold(self):
+        return self.calibration.activation_threshold
+
+    @activation_threshold.setter
+    def activation_threshold(self, val):
+        self.calibration.activation_threshold = val
+
+    @property
+    def deactivation_threshold(self):
+        return self.calibration.deactivation_threshold
+
+    @deactivation_threshold.setter
+    def deactivation_threshold(self, val):
+        self.calibration.deactivation_threshold = val
+
+    @property
+    def calibrated_ambient(self):
+        return self.calibration.calibrated_ambient
+    
+    @calibrated_ambient.setter
+    def calibrated_ambient(self, val):
+        self.calibration.calibrated_ambient = val
+        
+    @property
+    def short_term_noise(self):
+        return self.calibration.short_term_noise
+        
+    @short_term_noise.setter
+    def short_term_noise(self, val):
+        self.calibration.short_term_noise = val
+        
+    @property
+    def long_term_noise(self):
+        return self.calibration.long_term_noise
+        
+    @long_term_noise.setter
+    def long_term_noise(self, val):
+        self.calibration.long_term_noise = val
+
+    @property
+    def stable_ambient_time(self):
+        return self.calibration.stable_ambient_time
+
+    @stable_ambient_time.setter
+    def stable_ambient_time(self, val):
+        self.calibration.stable_ambient_time = val
 
     def _try_open(self, index, rate):
         s = self.pa.open(format=pyaudio.paInt16, channels=1, rate=rate,
@@ -355,18 +334,7 @@ class AudioEngine:
             print(f"  ⚠️  Calibration read failed: {e}")
         peak_floor = max(peaks) if peaks else 0
         if vols:
-            self.calibrated_ambient = max(40.0, float(np.median(vols)))
-            self.short_term_noise = self.calibrated_ambient
-            self.long_term_noise = self.calibrated_ambient
-            self.ambient = self.calibrated_ambient
-            
-            # Recalculate VAD activation and deactivation thresholds
-            self.activation_threshold = max(300.0, self.calibrated_ambient * config.AUDIO_VAD_ACTIVATION_RATIO)
-            self.deactivation_threshold = max(200.0, self.calibrated_ambient * config.AUDIO_VAD_DEACTIVATION_RATIO)
-            self.speech_thr = self.activation_threshold
-            
-            # Calibrate adaptive baseline for claps
-            self.clap_detector.calibrate(peaks, vols)
+            self.calibration.calibrate_baseline(vols, peaks, self.clap_detector)
             self.clap_thr = self.clap_detector.ambient_peak * (12.0 - (self.clap_detector.sensitivity * 9.0))
             
         if self.ambient < 45:
@@ -484,34 +452,10 @@ class AudioEngine:
                 # Only update background ambient estimates during quiet, non-triggering times
                 is_quiet = (vol < self.deactivation_threshold) and (peak < self.clap_detector.ambient_peak * 1.5)
                 if not recording and is_quiet:
-                    alpha_fast = 0.05
-                    alpha_slow = 0.005
-                    self.short_term_noise = (1.0 - alpha_fast) * self.short_term_noise + alpha_fast * vol
-                    self.long_term_noise = (1.0 - alpha_slow) * self.long_term_noise + alpha_slow * vol
-                    self.ambient = self.long_term_noise
-                    
-                    # Dynamically adapt VAD thresholds
-                    self.activation_threshold = max(300.0, self.long_term_noise * config.AUDIO_VAD_ACTIVATION_RATIO)
-                    self.deactivation_threshold = max(200.0, self.long_term_noise * config.AUDIO_VAD_DEACTIVATION_RATIO)
-                    self.speech_thr = self.activation_threshold
+                    self.calibration.update_noise_floor(vol)
                     
                     # Automatic Recalibration Check
-                    deviation = abs(self.long_term_noise - self.calibrated_ambient) / max(1.0, self.calibrated_ambient)
-                    if deviation > 0.30:
-                        # Noise level shifted significantly. See if it's stable.
-                        is_stable = abs(self.short_term_noise - self.long_term_noise) / max(1.0, self.long_term_noise) < 0.10
-                        if is_stable:
-                            if self.stable_ambient_time == 0.0:
-                                self.stable_ambient_time = time.time()
-                            elif (time.time() - self.stable_ambient_time) > config.AUDIO_AUTO_RECALIBRATE_SEC:
-                                print(f"\n  🔄  Auto-recalibrating microphone baseline (noise level shifted from {int(self.calibrated_ambient)} to {int(self.long_term_noise)})...")
-                                self.calibrated_ambient = self.long_term_noise
-                                self.stable_ambient_time = 0.0
-                                self._emit_calibration_diagnostics()
-                        else:
-                            self.stable_ambient_time = 0.0
-                    else:
-                        self.stable_ambient_time = 0.0
+                    self.calibration.check_auto_recalibration(self.clap_detector)
                 else:
                     self.stable_ambient_time = 0.0
 
