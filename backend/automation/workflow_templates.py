@@ -20,7 +20,7 @@ DEFAULT_TEMPLATES = {
                         "target": "chrome"
                     },
                     {
-                        "action": "browser_search",
+                        "action": "browser_search",       
                         "engine": "google",
                         "query": "python developer documentation"
                     }

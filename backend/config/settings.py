@@ -39,6 +39,11 @@ class Settings:
         self.SESSION_TTL = float(os.environ.get("JARVIS_SESSION_TTL", "300.0"))
         self.CLAP_SENSITIVITY = float(os.environ.get("JARVIS_CLAP_SENSITIVITY", "0.5"))
 
+        # Gesture Debouncing & Cooldown configuration
+        self.GESTURE_BUFFER_SIZE = int(os.environ.get("JARVIS_GESTURE_BUFFER_SIZE", "10"))
+        self.GESTURE_STABILITY_THRESHOLD = int(os.environ.get("JARVIS_GESTURE_STABILITY_THRESHOLD", "7"))
+        self.GESTURE_COOLDOWN_SECONDS = float(os.environ.get("JARVIS_GESTURE_COOLDOWN_SECONDS", "1.5"))
+        self.GESTURE_CONFIDENCE_THRESHOLD = float(os.environ.get("JARVIS_GESTURE_CONFIDENCE_THRESHOLD", "0.65"))
         
         # 4. Map loaded configuration structures
         self.APPS = self.apps_data.get("apps", {})

@@ -92,11 +92,16 @@ class GestureEngine:
             if results and results.multi_hand_landmarks:
                 landmarks = results.multi_hand_landmarks[0].landmark
                 
+                # Extract classification confidence from MediaPipe results
+                confidence = 1.0
+                if results.multi_handedness:
+                    confidence = results.multi_handedness[0].classification[0].score
+                
                 # Classify hand landmarks to gesture & action
                 raw_gesture, raw_action = classify_gesture(landmarks)
                 
-                # Stabilize gestures using history voting
-                gesture_name, action_name = self.actions.stabilize_gesture_and_action(raw_gesture, raw_action)
+                # Stabilize gestures using history voting and confidence threshold
+                gesture_name, action_name = self.actions.stabilize_gesture_and_action(raw_gesture, raw_action, confidence)
                 
                 # Try executing discrete command actions (Mute, Play/Pause, Wake)
                 triggered = self.actions.execute_discrete_actions(

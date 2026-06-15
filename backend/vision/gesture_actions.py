@@ -4,35 +4,24 @@ import pyautogui
 
 class GestureActionsManager:
     def __init__(self):
-        # Cooldowns and states
-        self.last_mute_time = 0.0
-        self.last_play_time = 0.0
+        from backend.vision.gesture_debouncer import GestureDebouncer
+        self.debouncer = GestureDebouncer()
+        
+        # States
         self.palm_start_time = None
         self.activated_this_palm = False
         
         # Debouncing current updates for WebSocket
         self.current_gesture = "None"
         self.current_action = "None"
-        
-        # Stabilizer history queue (stores (gesture, action) tuples)
-        self.history = []
-        self.history_len = 5
 
-    def stabilize_gesture_and_action(self, gesture: str, action: str) -> tuple:
-        """Appends gesture/action pair to history buffer and returns the majority voted pair."""
-        self.history.append((gesture, action))
-        if len(self.history) > self.history_len:
-            self.history.pop(0)
-            
-        counts = {}
-        for item in self.history:
-            counts[item] = counts.get(item, 0) + 1
-            
-        return max(counts, key=counts.get)
+    def stabilize_gesture_and_action(self, gesture: str, action: str, confidence: float = 1.0) -> tuple:
+        """Delegates stabilization to the gesture debouncer."""
+        return self.debouncer.add_frame(gesture, action, confidence)
         
     def reset_stabilizer(self):
         """Clears the stabilizer history queue to prevent lag on hand loss/re-acquisition."""
-        self.history.clear()
+        self.debouncer.reset()
         
     def emit_status(self, gesture: str, action: str, engine_running: bool, camera_status: str):
         """Sends a WebSocket message back to the HUD on status/gesture changes."""
@@ -72,30 +61,27 @@ class GestureActionsManager:
         m_type = mapping.get("type", "none")
         target = mapping.get("target", "none")
         
-        # Track previous gesture for transition edge-triggering
-        if not hasattr(self, "last_gesture"):
-            self.last_gesture = "None"
-        if not hasattr(self, "last_gesture_time"):
-            self.last_gesture_time = 0.0
-            
         triggered = False
+        
+        # Check if the debouncer allows this gesture to trigger
+        can_trigger = self.debouncer.can_trigger(gesture, target)
         
         if m_type == "system":
             if target == "activate_jarvis":
                 # Wake up J.A.R.V.I.S waker hold logic (1.5s hold)
-                if not self.palm_start_time:
-                    self.palm_start_time = now
-                elif (now - self.palm_start_time > 1.5) and not self.activated_this_palm:
-                    self.activated_this_palm = True
-                    print(f"\n  🖐️  Gesture hold waker! Activating Jarvis...")
-                    from backend.voice import audio_engine
-                    if audio_engine.ENGINE is not None and not audio_engine.ENGINE.busy:
-                        threading.Thread(target=audio_engine.ENGINE.activate, args=("gesture",), daemon=True).start()
+                if can_trigger:
+                    if not self.palm_start_time:
+                        self.palm_start_time = now
+                    elif (now - self.palm_start_time > 1.5) and not self.activated_this_palm:
+                        self.activated_this_palm = True
+                        print(f"\n  🖐️  Gesture hold waker! Activating Jarvis...")
+                        from backend.voice import audio_engine
+                        if audio_engine.ENGINE is not None and not audio_engine.ENGINE.busy:
+                            threading.Thread(target=audio_engine.ENGINE.activate, args=("gesture",), daemon=True).start()
                 triggered = True
                 
             elif target == "toggle_mute":
-                if now - self.last_mute_time > 2.5:
-                    self.last_mute_time = now
+                if can_trigger:
                     print("\n  ✊ Mute gesture detected! Toggling audio...")
                     pyautogui.press('volumemute')
                     from backend.voice import audio_engine
@@ -103,8 +89,7 @@ class GestureActionsManager:
                 triggered = True
                 
             elif target == "play_pause":
-                if now - self.last_play_time > 2.5:
-                    self.last_play_time = now
+                if can_trigger:
                     print("\n  👍 Play/Pause gesture detected! Toggling media...")
                     pyautogui.press('playpause')
                     from backend.voice import audio_engine
@@ -112,12 +97,7 @@ class GestureActionsManager:
                 triggered = True
                 
         elif m_type == "key":
-            # Keystroke trigger with transition edge-triggering + rate-limited auto-repeat
-            is_new_gesture = (gesture != self.last_gesture)
-            is_repeat_ready = (now - self.last_gesture_time > 0.8)
-            
-            if is_new_gesture or is_repeat_ready:
-                self.last_gesture_time = now
+            if can_trigger:
                 print(f"\n  🎹 Keystroke mapped: pressing '{target}' via gesture '{gesture}'")
                 pyautogui.press(target)
             triggered = True
@@ -127,9 +107,6 @@ class GestureActionsManager:
             self.palm_start_time = None
             self.activated_this_palm = False
             
-        # Save last gesture for next transition evaluation
-        self.last_gesture = gesture
-        
         # Emit WebSocket updates
         # If action mapped is none, we use the profile's mapped target name as HUD action
         hud_action = action if action != "None" else f"{m_type}:{target}".upper()
