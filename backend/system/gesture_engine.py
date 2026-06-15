@@ -40,6 +40,10 @@ class GestureEngine:
         gesture_state_manager.transition_to(GestureState.STARTING)
         self.running = True
         self.camera_status = "Active"
+        
+        # Reset stabilizers on engine boot
+        self.actions.reset_stabilizer()
+        
         self.thread = threading.Thread(target=self._run_loop, daemon=True)
         self.thread.start()
         self.actions.emit_status("None", "None", self.running, self.camera_status)
@@ -57,6 +61,9 @@ class GestureEngine:
         with self._frame_lock:
             self._latest_frame = None
         self.mouse.release_mouse_safety()
+        
+        # Reset stabilizers on engine shutdown
+        self.actions.reset_stabilizer()
         
         # Enforce transition to STOPPED state if not currently in ERROR
         if gesture_state_manager.get_state() != GestureState.ERROR:
@@ -158,11 +165,11 @@ class GestureEngine:
                             self.mouse.release_mouse_safety()
                             self.actions.emit_status(gesture_name, action_name, self.running, self.camera_status)
                 else:
-                    # Reset tracking states if hands disappear
-                    self.actions.reset_stabilizer()
+                    # Feed "None" frames into the stabilizer to naturally decay the gesture state
+                    gesture_name, action_name = self.actions.stabilize_gesture_and_action("None", "None", 1.0)
+                    self.actions.execute_discrete_actions(gesture_name, action_name, self.running, self.camera_status)
                     self.mouse.reset_scroll()
                     self.mouse.release_mouse_safety()
-                    self.actions.emit_status("None", "None", self.running, self.camera_status)
                     
                 # Apply visual overlays to local frame (useful for debugging display or screenshot)
                 self.tracker.draw_overlays(frame, results, gesture_name, action_name, fps)
