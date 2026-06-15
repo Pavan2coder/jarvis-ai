@@ -48,6 +48,14 @@ class Settings:
         # WebSocket Reliability
         self.WS_HEARTBEAT_TIMEOUT = float(os.environ.get("JARVIS_WS_HEARTBEAT_TIMEOUT", "30.0"))
         
+        # Audio Engine & Noise Calibration Settings
+        self.AUDIO_NOISE_REDUCTION_ENABLED = os.environ.get("JARVIS_AUDIO_NOISE_REDUCTION_ENABLED", "True").lower() == "true"
+        self.AUDIO_SPECTRUM_SUBTRACTION_FACTOR = float(os.environ.get("JARVIS_AUDIO_SPECTRUM_SUBTRACTION_FACTOR", "1.5"))
+        self.AUDIO_SPECTRAL_FLOOR = float(os.environ.get("JARVIS_AUDIO_SPECTRAL_FLOOR", "0.05"))
+        self.AUDIO_AUTO_RECALIBRATE_SEC = float(os.environ.get("JARVIS_AUDIO_AUTO_RECALIBRATE_SEC", "5.0"))
+        self.AUDIO_VAD_ACTIVATION_RATIO = float(os.environ.get("JARVIS_AUDIO_VAD_ACTIVATION_RATIO", "2.4"))
+        self.AUDIO_VAD_DEACTIVATION_RATIO = float(os.environ.get("JARVIS_AUDIO_VAD_DEACTIVATION_RATIO", "1.6"))
+
         # 4. Map loaded configuration structures
         self.APPS = self.apps_data.get("apps", {})
         self.CLOSE_PROCESSES = self.apps_data.get("close_processes", {})
