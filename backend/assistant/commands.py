@@ -216,22 +216,7 @@ def handle_system_command(command):
                 speak("For exact volume levels install pycaw. Run pip install pycaw.")
             return True
 
-    # ── gesture control ──
-    if any(w in command for w in ["start gesture control", "enable gestures", "turn on camera", "enable gesture control"]) \
-            or ("start" in command and "gesture" in command) \
-            or ("enable" in command and "gesture" in command):
-        from backend.system import gesture_engine
-        speak("Starting hand gesture control. Initializing camera.")
-        gesture_engine.start_gestures()
-        return True
-
-    if any(w in command for w in ["stop gesture control", "disable gestures", "turn off camera", "disable gesture control"]) \
-            or ("stop" in command and "gesture" in command) \
-            or ("disable" in command and "gesture" in command):
-        from backend.system import gesture_engine
-        speak("Stopping hand gesture control. Releasing camera.")
-        gesture_engine.stop_gestures()
-        return True
+    # Gesture control commands are now handled strictly by NLP intent routing
 
 
     # ── open an app ──
@@ -453,13 +438,31 @@ def handle_command(command):
             try: subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
             except Exception: pass
             
-        elif action == "enable_gestures":
-            from backend.system import gesture_engine
+        return
+
+    elif intent == "enable_gestures":
+        session_memory.set("current_task", "enable_gestures")
+        from backend.vision.gesture_state import gesture_state_manager, GestureState
+        current_state = gesture_state_manager.get_state()
+        
+        if current_state in (GestureState.RUNNING, GestureState.STARTING):
+            speak("Gesture control is already active.")
+        else:
             speak("Starting hand gesture control. Initializing camera.")
-            gesture_engine.start_gestures()
-        elif action == "disable_gestures":
             from backend.system import gesture_engine
+            gesture_engine.start_gestures()
+        return
+
+    elif intent == "disable_gestures":
+        session_memory.set("current_task", "disable_gestures")
+        from backend.vision.gesture_state import gesture_state_manager, GestureState
+        current_state = gesture_state_manager.get_state()
+        
+        if current_state == GestureState.STOPPED:
+            speak("Gesture control is not running.")
+        else:
             speak("Stopping hand gesture control. Releasing camera.")
+            from backend.system import gesture_engine
             gesture_engine.stop_gestures()
         return
 

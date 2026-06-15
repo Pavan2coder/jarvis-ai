@@ -37,7 +37,7 @@ class GestureStateManager:
         self.error_timestamp = None
         self.start_timestamp = None
         self.frames_processed = 0
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         
         # Valid state transitions lookup dictionary
         self._valid_transitions = {

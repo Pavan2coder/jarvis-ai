@@ -87,6 +87,30 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
     confidence = 0.5
     entities = {}
     
+    # 0. GESTURE CONTROL INTENTS (separate enable/disable, boundary matching, conflict prevention)
+    has_gesture_kw = bool(re.search(r'\b(gesture|gestures|camera)\b', normalized))
+    if has_gesture_kw:
+        has_enable = bool(re.search(r'\b(start|enable|on|activate|initialize)\b', normalized))
+        has_disable = bool(re.search(r'\b(stop|disable|off|quit|deactivate)\b', normalized))
+        
+        if has_enable and has_disable:
+            logger.warning(f"Contradictory gesture command detected: '{raw_text}'")
+            # Clear them so it doesn't match either, treating it as query_llm
+        elif has_enable:
+            return {
+                "intent": "enable_gestures",
+                "confidence": 0.98,
+                "entities": {},
+                "raw_text": raw_text
+            }
+        elif has_disable:
+            return {
+                "intent": "disable_gestures",
+                "confidence": 0.98,
+                "entities": {},
+                "raw_text": raw_text
+            }
+            
     # 1. CAMERA_CAPTURE INTENT
     if any(phrase in normalized for phrase in ["take photo", "capture image", "save picture", "selfie", "take a photo", "take a selfie", "take picture", "take a picture"]):
         intent = "camera_capture"
@@ -181,7 +205,7 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         entities["query"] = query.strip()
         
     # 6. SYSTEM_CONTROL INTENT
-    elif any(x in normalized for x in ["volume", "brightness", "dim", "mute", "silence", "shutdown", "shut down", "restart", "reboot", "lock", "sleep", "gesture"]):
+    elif any(x in normalized for x in ["volume", "brightness", "dim", "mute", "silence", "shutdown", "shut down", "restart", "reboot", "lock", "sleep"]):
         intent = "system_control"
         confidence = 0.90
         
@@ -216,12 +240,6 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
             entities["action"] = "lock"
         elif "sleep" in normalized:
             entities["action"] = "sleep"
-            
-        elif "gesture" in normalized:
-            if any(w in normalized for w in ["start", "enable", "on", "initialize"]):
-                entities["action"] = "enable_gestures"
-            elif any(w in normalized for w in ["stop", "disable", "off", "quit"]):
-                entities["action"] = "disable_gestures"
 
     # Match confidence tuning (if intent remains default query_llm but uses trigger words)
     if intent == "query_llm":
