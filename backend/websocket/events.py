@@ -127,6 +127,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_json()
+            manager.record_activity(websocket)
             logger.info(f"Received WebSocket data: {data}")
             
             # Fast-path heartbeat ping/pong

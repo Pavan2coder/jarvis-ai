@@ -97,14 +97,43 @@ class ConnectionManager:
             for info in self.active_connections.values()
         ]
 
+    def record_activity(self, websocket: WebSocket):
+        """Updates the last message activity timestamp for a connection."""
+        if websocket in self.active_connections:
+            self.active_connections[websocket]["last_message_at"] = time.time()
+
     def cleanup_dead_connections(self):
         """Scans and cleans up any stale or disconnected WebSocket connections."""
+        from backend.core import config
+        timeout = getattr(config, "WS_HEARTBEAT_TIMEOUT", 30.0)
+        now = time.time()
+        
         connections = list(self.active_connections.keys())
         for connection in connections:
-            if (connection.client_state == WebSocketState.DISCONNECTED or 
-                connection.application_state == WebSocketState.DISCONNECTED):
-                logger.warning(f"Cleaning up dead/stale connection: {connection}")
+            info = self.active_connections[connection]
+            
+            is_physically_disconnected = (
+                connection.client_state == WebSocketState.DISCONNECTED or 
+                connection.application_state == WebSocketState.DISCONNECTED
+            )
+            
+            is_inactive = (now - info["last_message_at"]) > timeout
+            
+            if is_physically_disconnected or is_inactive:
+                reason = "physical disconnect" if is_physically_disconnected else f"heartbeat timeout (> {timeout}s)"
+                logger.warning(f"Cleaning up dead connection ({reason}): {info['client_id']}")
                 self.disconnect(connection)
+                
+                # Actively close connection on heartbeat timeout
+                if is_inactive and not is_physically_disconnected:
+                    try:
+                        loop = self.loop or asyncio.get_event_loop()
+                        if loop.is_running():
+                            asyncio.run_coroutine_threadsafe(connection.close(code=1008), loop)
+                        else:
+                            loop.run_until_complete(connection.close(code=1008))
+                    except Exception as e:
+                        logger.error(f"Error actively closing stale connection: {e}")
 
 # Singleton Connection Manager
 manager = ConnectionManager()

@@ -31,7 +31,18 @@ async def startup_event():
     # Spawn the background diagnostics streaming worker task
     asyncio.create_task(start_diagnostics_streamer())
     
-    logger.info("FastAPI application instance started successfully. WebSocket loop bound and diagnostics streamer initialized.")
+    # Spawn the background connection pruning task
+    async def cleanup_loop():
+        while True:
+            try:
+                manager.cleanup_dead_connections()
+            except Exception as e:
+                logger.error(f"Error in connection manager cleanup loop: {e}")
+            await asyncio.sleep(10)
+            
+    asyncio.create_task(cleanup_loop())
+    
+    logger.info("FastAPI application instance started successfully. WebSocket loop bound, diagnostics, and connection cleaner initialized.")
 
 # Register routes
 app.include_router(status.router, tags=["Status"])

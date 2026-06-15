@@ -44,6 +44,9 @@ class Settings:
         self.GESTURE_STABILITY_THRESHOLD = int(os.environ.get("JARVIS_GESTURE_STABILITY_THRESHOLD", "7"))
         self.GESTURE_COOLDOWN_SECONDS = float(os.environ.get("JARVIS_GESTURE_COOLDOWN_SECONDS", "1.5"))
         self.GESTURE_CONFIDENCE_THRESHOLD = float(os.environ.get("JARVIS_GESTURE_CONFIDENCE_THRESHOLD", "0.65"))
+
+        # WebSocket Reliability
+        self.WS_HEARTBEAT_TIMEOUT = float(os.environ.get("JARVIS_WS_HEARTBEAT_TIMEOUT", "30.0"))
         
         # 4. Map loaded configuration structures
         self.APPS = self.apps_data.get("apps", {})

@@ -51,9 +51,29 @@ const HudLayout = () => {
             </span>
             <span>
               <span className="k">LINK</span>{' '}
-              <span className="v" style={{ color: link === 'LIVE' ? 'var(--green)' : 'var(--red)' }}>
+              <span className="v" style={{ color: link === 'LIVE' ? 'var(--green)' : (link === 'CONNECTING' ? 'var(--gold)' : 'var(--red)') }}>
                 {link}
               </span>
+              {link === 'FAILED' && (
+                <button 
+                  onClick={() => {
+                    import('./services/websocket').then(({ jarvisSocket }) => jarvisSocket.manualRetry());
+                  }}
+                  style={{
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    fontSize: '0.65rem',
+                    background: 'rgba(255, 0, 0, 0.2)',
+                    border: '1px solid var(--red)',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    borderRadius: '2px',
+                    fontFamily: 'inherit'
+                  }}
+                >
+                  RETRY
+                </button>
+              )}
             </span>
           </div>
         </header>
