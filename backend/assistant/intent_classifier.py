@@ -76,6 +76,45 @@ def match_app(candidate: str, threshold: float = 0.5) -> str:
         
     return ""
 
+# Gesture Command Aliases & Fuzzy Matching configurations
+ENABLE_GESTURE_ALIASES = [
+    "start gesture control",
+    "enable gestures",
+    "turn on camera",
+    "activate gestures",
+    "start gestures",
+    "enable gesture mode",
+    "turn on gesture control",
+    "start gesture mode",
+    "activate gesture mode"
+]
+
+DISABLE_GESTURE_ALIASES = [
+    "stop gesture control",
+    "disable gestures",
+    "turn off gesture mode",
+    "turn off camera",
+    "deactivate gestures",
+    "stop gestures",
+    "disable gesture control",
+    "stop gesture mode",
+    "turn off gesture control",
+    "top gesture control"  # Common misheard variant
+]
+
+def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
+    """Computes similarity ratios against a list of aliases and returns the best match."""
+    best_match = None
+    best_score = 0.0
+    for alias in aliases:
+        score = difflib.SequenceMatcher(None, text, alias).ratio()
+        if score > best_score:
+            best_score = score
+            best_match = alias
+    if best_score >= threshold:
+        return best_match, best_score
+    return None, 0.0
+
 def classify_intent(raw_text: str) -> Dict[str, Any]:
     """Classifies the user input command into a structured intent and extracts entities."""
     logger.info(f"Classifying intent for input: '{raw_text}'")
@@ -87,7 +126,29 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
     confidence = 0.5
     entities = {}
     
-    # 0. GESTURE CONTROL INTENTS (separate enable/disable, boundary matching, conflict prevention)
+    # 0. GESTURE CONTROL INTENTS (fuzzy matching & conflict prevention)
+    best_enable, enable_score = get_best_alias_match(normalized, ENABLE_GESTURE_ALIASES, threshold=0.80)
+    best_disable, disable_score = get_best_alias_match(normalized, DISABLE_GESTURE_ALIASES, threshold=0.80)
+    
+    if enable_score >= 0.80 and disable_score >= 0.80 and abs(enable_score - disable_score) < 0.03:
+        # Contradictory fuzzy scoring (both match above threshold with negligible difference)
+        logger.warning(f"Contradictory gesture command detected via fuzzy matching: '{raw_text}' (enable={enable_score:.2f}, disable={disable_score:.2f})")
+    elif enable_score > disable_score and enable_score >= 0.80:
+        return {
+            "intent": "enable_gestures",
+            "confidence": float(enable_score),
+            "entities": {},
+            "raw_text": raw_text
+        }
+    elif disable_score > enable_score and disable_score >= 0.80:
+        return {
+            "intent": "disable_gestures",
+            "confidence": float(disable_score),
+            "entities": {},
+            "raw_text": raw_text
+        }
+
+    # Keyword fallback for standard regex-based matching
     has_gesture_kw = bool(re.search(r'\b(gesture|gestures|camera)\b', normalized))
     if has_gesture_kw:
         has_enable = bool(re.search(r'\b(start|enable|on|activate|initialize)\b', normalized))
@@ -95,18 +156,17 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         
         if has_enable and has_disable:
             logger.warning(f"Contradictory gesture command detected: '{raw_text}'")
-            # Clear them so it doesn't match either, treating it as query_llm
         elif has_enable:
             return {
                 "intent": "enable_gestures",
-                "confidence": 0.98,
+                "confidence": 0.90,
                 "entities": {},
                 "raw_text": raw_text
             }
         elif has_disable:
             return {
                 "intent": "disable_gestures",
-                "confidence": 0.98,
+                "confidence": 0.90,
                 "entities": {},
                 "raw_text": raw_text
             }

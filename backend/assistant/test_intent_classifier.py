@@ -27,12 +27,13 @@ class TestIntentClassifierGestures(unittest.TestCase):
             "turn off camera",
             "deactivate gestures",
             "stop gestures",
-            "disable gesture control"
+            "disable gesture control",
+            "top gesture control"
         ]
         for command in disable_cases:
             result = classify_intent(command)
             self.assertEqual(result["intent"], "disable_gestures", f"Failed for: {command}")
-            self.assertTrue(result["confidence"] >= 0.90)
+            self.assertTrue(result["confidence"] >= 0.80)
 
     def test_substring_conflict_prevention(self):
         """Verifies that substring matches like 'on' in 'control' do not misclassify."""
