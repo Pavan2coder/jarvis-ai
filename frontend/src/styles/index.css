@@ -111,7 +111,33 @@ body::after {
 .topmeta .v { color: #fff; }
 
 /* Panels */
-.panel { display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+  /* Firefox support */
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+/* Sci-fi Custom Scrollbar for Panels */
+.panel::-webkit-scrollbar {
+  width: 4px;
+}
+.panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.panel::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 2px;
+}
+.panel::-webkit-scrollbar-thumb:hover {
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+}
 .card {
   background: var(--glass); border: 1px solid var(--line); padding: 14px;
   backdrop-filter: blur(6px); position: relative;
