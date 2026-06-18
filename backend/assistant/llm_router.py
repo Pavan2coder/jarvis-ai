@@ -1,5 +1,4 @@
 import os
-import requests
 from backend.core import config
 from backend.utils.logger import logger
 from backend.assistant import brain
@@ -30,22 +29,33 @@ class LLMRouter:
         try:
             if brain.gemini_ready():
                 logger.info(f"Attempting to query Gemini API using model '{brain.GEMINI_MODEL}'...")
-                answer = brain.ask_gemini(prompt)
+                from network.api_client import registry, GeminiProvider
                 
-                # Check if the returned answer is an error indicator string
-                if (answer and 
-                    not answer.startswith("My AI brain returned an error") and 
-                    not answer.startswith("Sorry, I couldn't reach my AI brain")):
-                    logger.info(f"Success: Prompt resolved via Gemini model '{brain.GEMINI_MODEL}'")
-                    return answer
-                else:
-                    logger.warning(f"Gemini API returned error state: '{answer}'. Initiating Ollama fallback.")
+                gemini_provider = registry.get("gemini")
+                if isinstance(gemini_provider, GeminiProvider):
+                    # Keep model in sync with the dynamically verified brain model
+                    gemini_provider.model_name = brain.GEMINI_MODEL
+                
+                # Fetch recent conversation memory
+                history_list = list(brain.chat_history[-brain.MAX_HISTORY:])
+                answer = gemini_provider.generate(
+                    prompt=prompt,
+                    history=history_list,
+                    system_instruction=self.system_prompt
+                )
+                
+                # Synchronize back to the shared chat memory
+                brain.chat_history.append({"role": "user", "text": prompt})
+                brain.chat_history.append({"role": "model", "text": answer})
+                
+                logger.info(f"Success: Prompt resolved via Gemini model '{brain.GEMINI_MODEL}'")
+                return answer
             else:
                 logger.warning("Gemini API key is not configured. Routing directly to local Ollama.")
         except Exception as e:
-            logger.error(f"Gemini generation raised an exception: {e}. Initiating Ollama fallback.")
+            logger.error(f"Gemini generation failed: {e}. Initiating Ollama fallback.")
 
-        # 2. Fallback to local Ollama
+        # 3. Fallback to local Ollama
         logger.info(f"Attempting fallback query to local Ollama using model '{self.ollama_model}'...")
         try:
             answer = self._ask_ollama(prompt)
@@ -57,34 +67,19 @@ class LLMRouter:
 
     def _ask_ollama(self, prompt: str) -> str:
         """Queries local Ollama chat API mapping the existing chat history."""
-        # Convert history format from brain.chat_history:
-        # turn = {"role": "user"/"model", "text": ...}
-        # Ollama expects: {"role": "user"/"assistant", "content": ...}
-        messages = [{"role": "system", "content": self.system_prompt}]
+        from network.api_client import registry, OllamaProvider
         
-        for turn in brain.chat_history[-brain.MAX_HISTORY:]:
-            role = "user" if turn["role"] == "user" else "assistant"
-            messages.append({"role": role, "content": turn["text"]})
+        ollama_provider = registry.get("ollama")
+        if isinstance(ollama_provider, OllamaProvider):
+            ollama_provider.ollama_url = self.ollama_url
+            ollama_provider.model_name = self.ollama_model
             
-        messages.append({"role": "user", "content": prompt})
-        
-        url = f"{self.ollama_url.rstrip('/')}/api/chat"
-        payload = {
-            "model": self.ollama_model,
-            "messages": messages,
-            "stream": False,
-            "options": {
-                "temperature": 0.7,
-                "num_predict": 256
-            }
-        }
-        
-        r = requests.post(url, json=payload, timeout=25)
-        if r.status_code != 200:
-            raise RuntimeError(f"Ollama returned HTTP error code {r.status_code}: {r.text[:100]}")
-            
-        res_json = r.json()
-        answer = res_json["message"]["content"].strip()
+        history_list = list(brain.chat_history[-brain.MAX_HISTORY:])
+        answer = ollama_provider.generate(
+            prompt=prompt,
+            history=history_list,
+            system_instruction=self.system_prompt
+        )
         
         # Synchronize fallback response back to the shared chat memory
         brain.chat_history.append({"role": "user", "text": prompt})
@@ -94,3 +89,4 @@ class LLMRouter:
 
 # Global Router Singleton
 router = LLMRouter()
+
