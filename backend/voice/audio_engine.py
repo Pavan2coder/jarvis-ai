@@ -155,6 +155,7 @@ class AudioEngine:
         self.noise_reducer = SpectralNoiseReducer(config.CHUNK, config.SAMPLE_RATE)
         
         self.busy = False           # True while handling a command
+        self.flush_pending = False  # set by worker after TTS; cleared by run() loop
         self.clap_times = []
         self.last_edge = 0.0
         self.prev_loud = False
@@ -390,6 +391,9 @@ class AudioEngine:
                 break
 
     def activate(self, source="voice"):
+        # Hold busy for the full greeting + capture phase so the audio loop
+        # doesn't re-enter while we own the mic stream.  The worker will
+        # re-acquire busy via on_command_start before we release it here.
         self.busy = True
         try:
             print(f"\n  🟢  JARVIS ACTIVATED  [{source.upper()}]")
@@ -401,36 +405,31 @@ class AudioEngine:
                 "Jarvis here. Go ahead.",
                 "Online. What do you need?",
             ]))
-            self._flush()                              # ignore the echo of my own voice
+            self._flush()                              # drop echo of the greeting
             command = self.capture_phrase(start_timeout=6, max_seconds=9)
             if command:
                 print(f"  👤 You » {command}")
                 ui_server.set_ui("thinking", message="Processing...", command=command)
-                # Local import to avoid circular dependencies
-                from backend.assistant import commands
-                commands.handle_command(command)
+                from core.command_queue import COMMAND_QUEUE, CommandSource
+                if not COMMAND_QUEUE.put(command, CommandSource.VOICE):
+                    speak("I'm a bit overloaded right now. Please try again.")
             else:
                 speak("I didn't catch that. Call me again when you're ready.")
         except Exception as e:
             print(f"  ⚠️  Activation error: {e}")
         finally:
-            ui_server.set_ui("idle", message="Standing by...")
-            self._flush()
+            # Release busy so the audio loop can proceed.  The worker sets
+            # busy=True in on_command_start within milliseconds of the put()
+            # above, so the gap where busy=False is negligible.
             self.busy = False
 
     def _run_command(self, text):
-        self.busy = True
-        try:
-            print(f"\n  ⚡  Direct command » {text}")
-            ui_server.set_ui("thinking", message="Processing...", command=text)
-            from backend.assistant import commands
-            commands.handle_command(text)
-        except Exception as e:
-            print(f"  ⚠️  Command error: {e}")
-        finally:
-            ui_server.set_ui("idle", message="Standing by...")
-            self._flush()                              # drop the echo of my reply
-            self.busy = False
+        # Non-blocking: hand the command to the worker and return immediately.
+        # The worker manages the busy flag and UI state via its lifecycle hooks.
+        print(f"\n  ⚡  Direct command » {text}")
+        from core.command_queue import COMMAND_QUEUE, CommandSource
+        if not COMMAND_QUEUE.put(text, CommandSource.VOICE):
+            print("  ⚠️  Command queue full — command dropped.")
 
     def run(self):
         if config.ALWAYS_LISTEN:
@@ -443,6 +442,13 @@ class AudioEngine:
         max_phrase = int(5 * config.SAMPLE_RATE / config.CHUNK)
         while True:
             try:
+                # Flush the mic buffer when the worker signals it (echo suppression
+                # after TTS reply).  Checked here — outside the busy branch — so it
+                # fires even if busy transitions to False in the same scheduler tick.
+                if self.flush_pending:
+                    self._flush()
+                    self.flush_pending = False
+
                 if self.busy:
                     time.sleep(0.05)
                     continue

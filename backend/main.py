@@ -25,6 +25,8 @@ from backend.assistant import brain
 from backend.api import ui_server
 from backend.voice import audio_engine
 from backend.assistant import commands
+from core.command_queue import COMMAND_QUEUE, CommandSource
+from core.command_worker import CommandWorker
 
 # Force UTF-8 console output so the emoji / box-drawing prints never crash on
 # a Windows cp1252 codepage (and so logs survive being piped to a file).
@@ -33,6 +35,32 @@ try:
     sys.stderr.reconfigure(encoding="utf-8")
 except Exception:
     pass
+
+# ── Worker lifecycle callbacks ─────────────────────────────────────────────
+# These run on the worker thread, never on the audio-capture thread.
+
+def _on_command_start(item):
+    """Gate the audio loop and update UI before executing a command."""
+    if audio_engine.ENGINE is not None:
+        audio_engine.ENGINE.busy = True
+    ui_server.set_ui("thinking", message="Processing...", command=item.text)
+
+def _on_command_end(item):
+    """Release the audio loop and request an echo-flush after TTS finishes."""
+    ui_server.set_ui("idle", message="Standing by...")
+    if audio_engine.ENGINE is not None:
+        # Signal the audio loop to flush the mic buffer on its next tick so
+        # Jarvis's own TTS reply doesn't trigger a false wake-word match.
+        audio_engine.ENGINE.flush_pending = True
+        audio_engine.ENGINE.busy = False
+
+def _on_command_error(item, exc):
+    """Speak a brief error notice so the user isn't left in silence."""
+    try:
+        audio_engine.speak("Sorry, something went wrong with that command.")
+    except Exception:
+        pass
+
 
 # ── console fallback: type commands even if the mic misbehaves ──
 def console_loop():
@@ -43,30 +71,20 @@ def console_loop():
             return
         text = line.strip().lower()
 
-        # No mic available → typed commands are the ONLY way in. Handle directly.
-        if audio_engine.ENGINE is None:
-            if not text:
-                print("  ⌨️  No microphone — type a command, e.g. 'what time is it'.")
-                continue
-            print(f"  ⌨️  You typed » {text}")
-            ui_server.set_ui("thinking", message="Processing...", command=text)
-            commands.handle_command(text)
-            ui_server.set_ui("idle", message="Standing by...")
-            continue
+        if COMMAND_QUEUE.is_shutting_down:
+            return
 
         if not text:
-            # plain ENTER → trigger a voice activation
-            audio_engine.ENGINE.activate("manual")
+            if audio_engine.ENGINE is None:
+                print("  ⌨️  No microphone — type a command, e.g. 'what time is it'.")
+            else:
+                # plain ENTER → trigger a voice activation
+                audio_engine.ENGINE.activate("manual")
             continue
-        # typed command → handle directly (no mic needed); pause the mic loop
-        audio_engine.ENGINE.busy = True
-        try:
-            print(f"  ⌨️  You typed » {text}")
-            ui_server.set_ui("thinking", message="Processing...", command=text)
-            commands.handle_command(text)
-        finally:
-            ui_server.set_ui("idle", message="Standing by...")
-            audio_engine.ENGINE.busy = False
+
+        print(f"  ⌨️  You typed » {text}")
+        if not COMMAND_QUEUE.put(text, CommandSource.CONSOLE):
+            print("  ⚠️  Command queue is full or shutting down.")
 
 # ══════════════════════════════════════════════
 # 🚀  BOOT
@@ -121,15 +139,34 @@ def main():
         except Exception as e:
             print(f"  ⚠️  Could not start gesture engine on boot: {e}")
 
+    # Start the command worker — must be running before console_loop so that
+    # typed commands work even when the mic is absent.
+    worker = CommandWorker(
+        handler=commands.handle_command,
+        on_command_start=_on_command_start,
+        on_command_end=_on_command_end,
+        on_error=_on_command_error,
+    )
+    worker.start()
+
     # Console typing always works
     threading.Thread(target=console_loop, daemon=True).start()
 
-    # Run the mic engine (or idle if no mic)
-    if audio_engine.ENGINE is not None:
-        audio_engine.ENGINE.run()
-    else:
-        while True:
-            time.sleep(1)
+    # Run the mic engine (or idle if no mic); handle Ctrl+C for clean shutdown
+    try:
+        if audio_engine.ENGINE is not None:
+            audio_engine.ENGINE.run()
+        else:
+            while True:
+                time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n  🛑  Shutting down JARVIS…")
+        COMMAND_QUEUE.shutdown()
+        worker.stop(timeout=8.0)
+        print(f"  📊  Queue stats: {COMMAND_QUEUE.stats}")
+        print(f"  📊  Worker stats: {worker.stats}")
+        print("  ✅  JARVIS shut down cleanly.")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
