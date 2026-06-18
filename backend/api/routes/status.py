@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from backend.api.ui_server import ui_state
+from ui.state_manager import state_manager
 from backend.system import system_ops
 
 router = APIRouter()
@@ -7,7 +7,12 @@ router = APIRouter()
 @router.get("/state")
 async def get_state():
     """Returns the current J.A.R.V.I.S UI state dictionary."""
-    return ui_state
+    return state_manager.get_snapshot()
+
+@router.get("/state/diagnostics")
+async def get_state_diagnostics():
+    """Returns lock contention, reads, writes, and subscriber counts for diagnostics."""
+    return state_manager.get_diagnostics()
 
 @router.get("/stats")
 async def get_stats():
@@ -18,3 +23,4 @@ async def get_stats():
 async def get_health():
     """Simple health check verification endpoint."""
     return {"status": "healthy"}
+

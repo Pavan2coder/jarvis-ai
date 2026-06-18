@@ -4,10 +4,11 @@ from enum import Enum
 from typing import Dict, List, Callable, Any, Awaitable
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from backend.websocket.socket_manager import manager
-from backend.api.ui_server import ui_state
+from ui.state_manager import state_manager
 from backend.utils import logger
 
 router = APIRouter()
+
 
 # 1. Predefined Event Types
 class JarvisEventType(str, Enum):
@@ -121,7 +122,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
     
     # Broadcast initial state wrap inside SYSTEM_UPDATE event
-    initial_event = JarvisEvent(JarvisEventType.SYSTEM_UPDATE, data=ui_state)
+    initial_event = JarvisEvent(JarvisEventType.SYSTEM_UPDATE, data=state_manager.get_snapshot())
     await manager.send_personal_message(initial_event.to_dict(), websocket)
     
     try:
