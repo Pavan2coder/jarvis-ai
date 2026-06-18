@@ -4,8 +4,10 @@ GEMINI_API_KEY = config.GEMINI_API_KEY
 GEMINI_MODEL = config.GEMINI_MODEL
 
 
-# Short conversation memory so Jarvis can follow up
-chat_history = []        # list of {"role": "user"/"model", "text": ...}
+from brain.conversation_memory import ThreadSafeConversationMemory
+
+# Short conversation memory so Jarvis can follow up (thread-safe)
+chat_history = ThreadSafeConversationMemory()
 MAX_HISTORY  = 8
 
 def gemini_ready():
