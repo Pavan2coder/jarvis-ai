@@ -7,6 +7,7 @@ import pyaudio
 import speech_recognition as sr
 import pyttsx3
 
+from core.shutdown_manager import shutdown_manager
 from backend.core import config
 from backend.api import ui_server
 from backend.audio import CalibrationManager, AdaptiveClapDetector
@@ -440,7 +441,7 @@ class AudioEngine:
         print("  ⌨️   Or press ENTER in this window to type a command (works without a mic).\n")
         frames, recording, silent = [], False, 0
         max_phrase = int(5 * config.SAMPLE_RATE / config.CHUNK)
-        while True:
+        while not shutdown_manager.is_shutting_down():
             try:
                 # Flush the mic buffer when the worker signals it (echo suppression
                 # after TTS reply).  Checked here — outside the busy branch — so it
@@ -516,5 +517,27 @@ class AudioEngine:
                         except Exception:
                             pass
             except Exception as e:
+                if shutdown_manager.is_shutting_down():
+                    break
                 print(f"  ⚠️  Audio loop error: {e}")
                 time.sleep(0.3)
+
+    def terminate(self) -> None:
+        """Safely stops and releases PyAudio stream and handles."""
+        if hasattr(self, 'stream') and self.stream is not None:
+            try:
+                self.stream.stop_stream()
+                self.stream.close()
+            except Exception as e:
+                print(f"  ⚠️  Error closing audio stream: {e}")
+            finally:
+                self.stream = None
+        
+        if hasattr(self, 'pa') and self.pa is not None:
+            try:
+                self.pa.terminate()
+            except Exception as e:
+                print(f"  ⚠️  Error terminating PyAudio: {e}")
+            finally:
+                self.pa = None
+        print("  🎤  Microphone and audio resources released.")

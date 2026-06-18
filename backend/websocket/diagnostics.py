@@ -4,6 +4,7 @@ from typing import Dict, Any
 from backend.websocket.events import dispatcher, JarvisEvent, JarvisEventType
 from backend.system.system_ops import get_live_stats
 from backend.utils import logger
+from core.shutdown_manager import shutdown_manager
 
 # Store previous network stats to calculate throughput (KB/s)
 _net_io_cache = {"t": time.time(), "sent": 0, "recv": 0}
@@ -56,7 +57,7 @@ async def start_diagnostics_streamer():
     except Exception:
         pass
 
-    while True:
+    while not shutdown_manager.is_shutting_down():
         try:
             # PERFORMANCE OPTIMIZATION:
             # Run the blocking OS calls in a thread pool executor to prevent blocking

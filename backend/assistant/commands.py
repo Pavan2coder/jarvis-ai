@@ -7,6 +7,8 @@ import webbrowser
 import ctypes
 import re
 
+import threading
+from core.shutdown_manager import shutdown_manager
 from backend.core import config
 from backend.system import system_ops
 from backend.assistant import brain
@@ -478,12 +480,8 @@ def handle_command(command):
     elif intent == "exit":
         speak(f"Goodbye {config.YOUR_NAME}. Jarvis signing off.")
         ui_server.set_ui("idle", message="Offline.")
-        try:
-            from backend.system import gesture_engine
-            gesture_engine.stop_gestures()
-        except Exception:
-            pass
-        os._exit(0)
+        # Trigger graceful shutdown asynchronously in a separate thread to prevent self-joining deadlock
+        threading.Thread(target=shutdown_manager.initiate_shutdown, args=(0,), daemon=True).start()
 
     # 3. Fallbacks for existing helper functions
     if handle_folder_command(command):

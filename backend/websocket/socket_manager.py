@@ -135,5 +135,44 @@ class ConnectionManager:
                     except Exception as e:
                         logger.error(f"Error actively closing stale connection: {e}")
 
+    async def close_all(self):
+        """Closes all active connections gracefully."""
+        connections = list(self.active_connections.keys())
+        for connection in connections:
+            try:
+                await connection.close(code=1000)
+            except Exception as e:
+                logger.error(f"Error closing connection during shutdown: {e}")
+            self.disconnect(connection)
+
+    def close_all_sync(self):
+        """Bridge to close all connections synchronously."""
+        if not self.active_connections:
+            return
+        
+        loop = self.loop
+        if not loop:
+            try:
+                loop = asyncio.get_event_loop()
+            except RuntimeError:
+                pass
+                
+        if loop:
+            if loop.is_running():
+                future = asyncio.run_coroutine_threadsafe(self.close_all(), loop)
+                try:
+                    future.result(timeout=3.0)
+                except Exception as e:
+                    logger.error(f"Timeout closing WebSocket connections from sync: {e}")
+            else:
+                try:
+                    loop.run_until_complete(self.close_all())
+                except Exception as e:
+                    logger.error(f"Error running close_all in event loop: {e}")
+        else:
+            connections = list(self.active_connections.keys())
+            for connection in connections:
+                self.disconnect(connection)
+
 # Singleton Connection Manager
 manager = ConnectionManager()

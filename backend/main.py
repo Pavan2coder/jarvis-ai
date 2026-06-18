@@ -25,6 +25,7 @@ from backend.assistant import brain
 from backend.api import ui_server
 from backend.voice import audio_engine
 from backend.assistant import commands
+from core.shutdown_manager import shutdown_manager
 from core.command_queue import COMMAND_QUEUE, CommandSource
 from core.command_worker import CommandWorker
 
@@ -149,6 +150,31 @@ def main():
     )
     worker.start()
 
+    # Register all graceful shutdown handlers
+    def cleanup_queue_and_worker():
+        COMMAND_QUEUE.shutdown()
+        worker.stop(timeout=4.0)
+        print(f"  📊  Queue stats: {COMMAND_QUEUE.stats}")
+        print(f"  📊  Worker stats: {worker.stats}")
+
+    def cleanup_audio_engine():
+        if audio_engine.ENGINE is not None:
+            audio_engine.ENGINE.terminate()
+
+    def persist_states():
+        from backend.assistant.session_memory import session_memory
+        session_memory.clear()
+        print("  💾  System state persisted.")
+
+    from backend.websocket.socket_manager import manager as ws_manager
+    from backend.system import gesture_engine
+
+    shutdown_manager.register_handler("queue_and_worker", cleanup_queue_and_worker, priority=10)
+    shutdown_manager.register_handler("websockets", ws_manager.close_all_sync, priority=20)
+    shutdown_manager.register_handler("gesture_engine", gesture_engine.stop_gestures, priority=30)
+    shutdown_manager.register_handler("audio_engine", cleanup_audio_engine, priority=30)
+    shutdown_manager.register_handler("state_persistence", persist_states, priority=40)
+
     # Console typing always works
     threading.Thread(target=console_loop, daemon=True).start()
 
@@ -157,16 +183,12 @@ def main():
         if audio_engine.ENGINE is not None:
             audio_engine.ENGINE.run()
         else:
-            while True:
+            while not shutdown_manager.is_shutting_down():
                 time.sleep(1)
     except KeyboardInterrupt:
-        print("\n  🛑  Shutting down JARVIS…")
-        COMMAND_QUEUE.shutdown()
-        worker.stop(timeout=8.0)
-        print(f"  📊  Queue stats: {COMMAND_QUEUE.stats}")
-        print(f"  📊  Worker stats: {worker.stats}")
-        print("  ✅  JARVIS shut down cleanly.")
-        sys.exit(0)
+        pass
+    finally:
+        shutdown_manager.initiate_shutdown(0)
 
 if __name__ == "__main__":
     main()

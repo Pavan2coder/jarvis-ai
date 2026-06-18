@@ -7,6 +7,7 @@ from fastapi.responses import HTMLResponse
 from backend.api.routes import status, command
 from backend.websocket.events import router as ws_router
 from backend.utils import logger
+from core.shutdown_manager import shutdown_manager
 
 app = FastAPI(title="J.A.R.V.I.S API Server", version="3.5.0")
 
@@ -33,7 +34,7 @@ async def startup_event():
     
     # Spawn the background connection pruning task
     async def cleanup_loop():
-        while True:
+        while not shutdown_manager.is_shutting_down():
             try:
                 manager.cleanup_dead_connections()
             except Exception as e:
