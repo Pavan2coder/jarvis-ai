@@ -33,6 +33,7 @@ class Settings:
         
         self.GESTURES_ENABLED_ON_BOOT = os.environ.get("JARVIS_GESTURES_ENABLED_ON_BOOT", "False").lower() == "true"
         self.CAMERA_INDEX = int(os.environ.get("JARVIS_CAMERA_INDEX", "0"))
+        self.TESSERACT_CMD = os.environ.get("JARVIS_TESSERACT_CMD") or None
         self.GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
         self.OLLAMA_URL = os.environ.get("JARVIS_OLLAMA_URL", "http://localhost:11434")
         self.OLLAMA_MODEL = os.environ.get("JARVIS_OLLAMA_MODEL", "llama3")
