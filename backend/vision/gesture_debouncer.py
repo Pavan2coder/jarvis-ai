@@ -41,7 +41,7 @@ class GestureDebouncer:
         self.last_triggered_gesture = "None"
         
         # Set of continuous/hold-based gestures that bypass strict edge-triggering/cooldown checks
-        self.continuous_gestures = {"Index Point", "Middle Pinch", "Peace Sign"}
+        self.continuous_gestures = {"Index Point", "Fist", "Peace Sign"}
         
         logger.info(
             f"GestureDebouncer initialized (buffer_size={self.buffer_size}, "

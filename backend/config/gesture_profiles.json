@@ -10,8 +10,8 @@
           "target": "move_cursor"
         },
         "Middle Pinch": {
-          "type": "mouse",
-          "target": "click_and_drag"
+          "type": "system",
+          "target": "toggle_mute"
         },
         "Peace Sign": {
           "type": "mouse",
@@ -22,8 +22,8 @@
           "target": "activate_jarvis"
         },
         "Fist": {
-          "type": "system",
-          "target": "toggle_mute"
+          "type": "mouse",
+          "target": "click_and_drag"
         },
         "Thumbs Up": {
           "type": "system",
@@ -41,7 +41,7 @@
         },
         "Middle Pinch": {
           "type": "key",
-          "target": "f"
+          "target": "f5"
         },
         "Thumbs Up": {
           "type": "key",
@@ -53,7 +53,7 @@
         },
         "Fist": {
           "type": "key",
-          "target": "f5"
+          "target": "f"
         },
         "Peace Sign": {
           "type": "key",
@@ -71,7 +71,7 @@
         },
         "Middle Pinch": {
           "type": "key",
-          "target": "f5"
+          "target": "b"
         },
         "Open Palm": {
           "type": "key",
@@ -83,7 +83,7 @@
         },
         "Fist": {
           "type": "key",
-          "target": "b"
+          "target": "f5"
         },
         "Peace Sign": {
           "type": "mouse",

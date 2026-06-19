@@ -115,7 +115,7 @@ class HandTracker:
                         # Glowing neon blue dot + outer ring
                         cv2.circle(frame, (ix, iy), 6, cyan, -1, cv2.LINE_AA)
                         cv2.circle(frame, (ix, iy), 14, cyan, 1, cv2.LINE_AA)
-                elif active_gesture == "Middle Pinch":
+                elif active_gesture == "Fist":
                     # Orange crosshair glow for click/drag state
                     cv2.circle(frame, (ix, iy), 8, hot_orange, -1, cv2.LINE_AA)
                     cv2.circle(frame, (ix, iy), 18, hot_orange, 2, cv2.LINE_AA)

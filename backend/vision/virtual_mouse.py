@@ -106,12 +106,23 @@ class VirtualMouse:
         # Save positions for next frame reference
         self.prev_x, self.prev_y = curr_x, curr_y
         
-    def handle_click_and_drag(self, thumb_lm, index_lm, landmarks=None):
+    def handle_click_and_drag(self, thumb_lm=None, index_lm=None, landmarks=None, is_clicking: bool = None):
         """
-        Monitors pinch distance (thumb to index). Transitions smoothly 
-        into hold/drag state when pinched, and releases when open.
-        Uses scale-invariant thresholds if full landmarks are provided.
+        Monitors pinch distance (thumb to index) if is_clicking is not specified.
+        Otherwise, transitions smoothly into hold/drag state when is_clicking is True,
+        and releases when is_clicking is False.
         """
+        if is_clicking is not None:
+            if is_clicking:
+                if not self.mouse_down:
+                    self.mouse_down = True
+                    pyautogui.mouseDown()
+            else:
+                if self.mouse_down:
+                    self.mouse_down = False
+                    pyautogui.mouseUp()
+            return
+
         if landmarks is not None:
             # Scale invariant pinch detection
             d_span = max(0.001, math.hypot(landmarks[5].x - landmarks[17].x, landmarks[5].y - landmarks[17].y))

@@ -101,10 +101,10 @@ class GestureProfileManager:
               "description": "Standard workspace cursor controls, scrolling, media shortcuts, and J.A.R.V.I.S waker.",
               "mappings": {
                 "Index Point": {"type": "mouse", "target": "move_cursor"},
-                "Middle Pinch": {"type": "mouse", "target": "click_and_drag"},
+                "Middle Pinch": {"type": "system", "target": "toggle_mute"},
                 "Peace Sign": {"type": "mouse", "target": "scroll"},
                 "Open Palm": {"type": "system", "target": "activate_jarvis"},
-                "Fist": {"type": "system", "target": "toggle_mute"},
+                "Fist": {"type": "mouse", "target": "click_and_drag"},
                 "Thumbs Up": {"type": "system", "target": "play_pause"}
               }
             },
@@ -113,10 +113,10 @@ class GestureProfileManager:
               "description": "Key bindings mapped to gestures for in-game shortcuts and quick saves.",
               "mappings": {
                 "Index Point": {"type": "mouse", "target": "move_cursor"},
-                "Middle Pinch": {"type": "key", "target": "f"},
+                "Middle Pinch": {"type": "key", "target": "f5"},
                 "Thumbs Up": {"type": "key", "target": "space"},
                 "Open Palm": {"type": "key", "target": "esc"},
-                "Fist": {"type": "key", "target": "f5"},
+                "Fist": {"type": "key", "target": "f"},
                 "Peace Sign": {"type": "key", "target": "tab"}
               }
             },
@@ -125,10 +125,10 @@ class GestureProfileManager:
               "description": "Slide navigation and a virtual laser pointer overlay.",
               "mappings": {
                 "Index Point": {"type": "mouse", "target": "laser_pointer"},
-                "Middle Pinch": {"type": "key", "target": "f5"},
+                "Middle Pinch": {"type": "key", "target": "b"},
                 "Open Palm": {"type": "key", "target": "right"},
                 "Thumbs Up": {"type": "key", "target": "left"},
-                "Fist": {"type": "key", "target": "b"},
+                "Fist": {"type": "key", "target": "f5"},
                 "Peace Sign": {"type": "mouse", "target": "scroll"}
               }
             }

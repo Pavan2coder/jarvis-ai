@@ -47,9 +47,9 @@ def classify_gesture(landmarks) -> tuple:
     if all(states):
         return "Open Palm", "Activate Jarvis"
         
-    # B. Fist (✊) -> Toggle Mute
+    # B. Fist (✊) -> Click/Drag
     if not any(states):
-        return "Fist", "Mute"
+        return "Fist", "Click/Drag"
         
     # C. Thumbs Up (👍) -> Play/Pause Music
     if states[0] and not any(states[1:]):
@@ -72,7 +72,7 @@ def classify_gesture(landmarks) -> tuple:
         d_pinch = get_distance(landmarks[4], landmarks[12])
         d_pinch_norm = d_pinch / d_span
         if d_pinch_norm < 0.28:
-            return "Middle Pinch", "Click/Drag"
+            return "Middle Pinch", "Mute"
         else:
             return "Index Point", "Hover/Move Mouse"
             

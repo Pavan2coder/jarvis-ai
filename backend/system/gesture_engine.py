@@ -171,7 +171,9 @@ class GestureEngine:
                     gesture_name, action_name, self.running, self.camera_status
                 )
 
-                if not triggered:
+                if triggered:
+                    self.mouse.release_mouse_safety()
+                else:
                     mapping = profile_manager.get_mapping_for_gesture(gesture_name)
                     m_type = mapping.get("type", "none")
                     target = mapping.get("target", "none")
@@ -182,7 +184,8 @@ class GestureEngine:
                         elif target in ("move_cursor", "laser_pointer", "click_and_drag"):
                             self.mouse.reset_scroll()
                             self.mouse.move_cursor(landmarks[8])
-                            self.mouse.handle_click_and_drag(landmarks[4], landmarks[12], landmarks)
+                            is_clicking = (target == "click_and_drag")
+                            self.mouse.handle_click_and_drag(is_clicking=is_clicking)
                         self.actions.emit_status(
                             gesture_name, action_name, self.running, self.camera_status
                         )
