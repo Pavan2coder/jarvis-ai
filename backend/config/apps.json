@@ -19,7 +19,11 @@
         "camera": "microsoft.windows.camera:",
         "spotify": "spotify",
         "vs code": "code",
-        "vscode": "code"
+        "vscode": "code",
+        "youtube": "https://www.youtube.com",
+        "google": "https://www.google.com",
+        "gmail": "https://mail.google.com",
+        "github": "https://github.com"
     },
     "close_processes": {
         "chrome": ["chrome.exe"],

@@ -13,7 +13,12 @@ def launch_app(name):
         if target is None:
             # Unknown app — try launching whatever they said via the shell
             target = name
-        if target.endswith(":"):                 # URI like ms-settings:
+        if target.startswith("http://") or target.startswith("https://") or target.startswith("www."):
+            import webbrowser
+            url = target if not target.startswith("www.") else "https://" + target
+            webbrowser.open(url)
+            return True
+        elif target.endswith(":"):                 # URI like ms-settings:
             os.startfile(target)
         else:
             # 'start' resolves apps on PATH and registered App Paths
