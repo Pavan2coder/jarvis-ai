@@ -69,10 +69,10 @@ def classify_gesture(landmarks) -> tuple:
     # E. Virtual Mouse Mode (Index finger pointing or pinching)
     # Triggered if index is open and we aren't in peace sign/palm.
     if states[1]:
-        d_pinch = get_distance(landmarks[4], landmarks[8])
+        d_pinch = get_distance(landmarks[4], landmarks[12])
         d_pinch_norm = d_pinch / d_span
         if d_pinch_norm < 0.28:
-            return "Index Pinch", "Click/Drag"
+            return "Middle Pinch", "Click/Drag"
         else:
             return "Index Point", "Hover/Move Mouse"
             

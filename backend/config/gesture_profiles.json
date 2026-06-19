@@ -9,7 +9,7 @@
           "type": "mouse",
           "target": "move_cursor"
         },
-        "Index Pinch": {
+        "Middle Pinch": {
           "type": "mouse",
           "target": "click_and_drag"
         },
@@ -39,7 +39,7 @@
           "type": "mouse",
           "target": "move_cursor"
         },
-        "Index Pinch": {
+        "Middle Pinch": {
           "type": "key",
           "target": "f"
         },
@@ -69,7 +69,7 @@
           "type": "mouse",
           "target": "laser_pointer"
         },
-        "Index Pinch": {
+        "Middle Pinch": {
           "type": "key",
           "target": "f5"
         },

@@ -182,7 +182,7 @@ class GestureEngine:
                         elif target in ("move_cursor", "laser_pointer", "click_and_drag"):
                             self.mouse.reset_scroll()
                             self.mouse.move_cursor(landmarks[8])
-                            self.mouse.handle_click_and_drag(landmarks[4], landmarks[8], landmarks)
+                            self.mouse.handle_click_and_drag(landmarks[4], landmarks[12], landmarks)
                         self.actions.emit_status(
                             gesture_name, action_name, self.running, self.camera_status
                         )

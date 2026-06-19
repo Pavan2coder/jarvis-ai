@@ -19,7 +19,7 @@ const GestureWidget = () => {
       case 'Thumbs Up': return '👍';
       case 'Peace Sign': return '✌️';
       case 'Open Palm': return '🖐️';
-      case 'Index Pinch': return '🤏';
+      case 'Middle Pinch': return '🤏';
       case 'Index Point': return '☝️';
       default: return '🖐️';
     }
