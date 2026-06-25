@@ -162,39 +162,45 @@ class GestureEngine:
                 if results.multi_handedness:
                     confidence = results.multi_handedness[0].classification[0].score
 
-                raw_gesture, raw_action = classify_gesture(landmarks)
-                gesture_name, action_name = self.actions.stabilize_gesture_and_action(
-                    raw_gesture, raw_action, confidence
-                )
-
-                triggered = self.actions.execute_discrete_actions(
-                    gesture_name, action_name, self.running, self.camera_status
-                )
-
-                if triggered:
-                    self.mouse.release_mouse_safety()
+                if profile_manager.active_profile == "work":
+                    gesture_name, action_name = self.mouse.process_advanced_gestures(landmarks)
+                    self.actions.emit_status(
+                        gesture_name, action_name, self.running, self.camera_status
+                    )
                 else:
-                    mapping = profile_manager.get_mapping_for_gesture(gesture_name)
-                    m_type = mapping.get("type", "none")
-                    target = mapping.get("target", "none")
+                    raw_gesture, raw_action = classify_gesture(landmarks)
+                    gesture_name, action_name = self.actions.stabilize_gesture_and_action(
+                        raw_gesture, raw_action, confidence
+                    )
 
-                    if m_type == "mouse":
-                        if target == "scroll":
-                            self.mouse.handle_scrolling(landmarks)
-                        elif target in ("move_cursor", "laser_pointer", "click_and_drag"):
-                            self.mouse.reset_scroll()
-                            self.mouse.move_cursor(landmarks[8])
-                            is_clicking = (target == "click_and_drag")
-                            self.mouse.handle_click_and_drag(is_clicking=is_clicking)
-                        self.actions.emit_status(
-                            gesture_name, action_name, self.running, self.camera_status
-                        )
-                    else:
-                        self.mouse.reset_scroll()
+                    triggered = self.actions.execute_discrete_actions(
+                        gesture_name, action_name, self.running, self.camera_status
+                    )
+
+                    if triggered:
                         self.mouse.release_mouse_safety()
-                        self.actions.emit_status(
-                            gesture_name, action_name, self.running, self.camera_status
-                        )
+                    else:
+                        mapping = profile_manager.get_mapping_for_gesture(gesture_name)
+                        m_type = mapping.get("type", "none")
+                        target = mapping.get("target", "none")
+
+                        if m_type == "mouse":
+                            if target == "scroll":
+                                self.mouse.handle_scrolling(landmarks)
+                            elif target in ("move_cursor", "laser_pointer", "click_and_drag"):
+                                self.mouse.reset_scroll()
+                                self.mouse.move_cursor(landmarks)
+                                is_clicking = (target == "click_and_drag")
+                                self.mouse.handle_click_and_drag(is_clicking=is_clicking)
+                            self.actions.emit_status(
+                                gesture_name, action_name, self.running, self.camera_status
+                            )
+                        else:
+                            self.mouse.reset_scroll()
+                            self.mouse.release_mouse_safety()
+                            self.actions.emit_status(
+                                gesture_name, action_name, self.running, self.camera_status
+                            )
             else:
                 # No hand detected: decay stabilizer, release mouse.
                 gesture_name, action_name = self.actions.stabilize_gesture_and_action(
@@ -205,6 +211,15 @@ class GestureEngine:
                 )
                 self.mouse.reset_scroll()
                 self.mouse.release_mouse_safety()
+                
+                # Reset advanced virtual mouse tracking states
+                self.mouse.scroll_prev_y = None
+                self.mouse.vol_prev_y = None
+                self.mouse.pinched = False
+                self.mouse.pinky_up = False
+                self.mouse.ring_up = False
+                self.mouse.spread_since = None
+                self.mouse.palm_hist.clear()
 
         except Exception as e:
             logger.error(f"GestureEngine frame processing error: {e}")
