@@ -100,9 +100,6 @@ class GestureEngine:
         from backend.vision.vision_manager import unsubscribe
         unsubscribe("gesture")
 
-        with self._frame_lock:
-            self._latest_frame = None
-
         self.mouse.release_mouse_safety()
         self.actions.reset_stabilizer()
 
@@ -113,17 +110,6 @@ class GestureEngine:
         print("  🎥  Gesture Control Engine stopped.")
 
     # ------------------------------------------------------------------
-    # Frame access (pull-style, for camera_ops)
-    # ------------------------------------------------------------------
-
-    def get_latest_frame(self):
-        """Thread-safe getter for the latest pre-flipped frame (no overlays)."""
-        if not self.running or self._latest_frame is None:
-            return None
-        with self._frame_lock:
-            return self._latest_frame.copy()
-
-    # ------------------------------------------------------------------
     # Subscriber callback
     # ------------------------------------------------------------------
 
@@ -132,14 +118,11 @@ class GestureEngine:
         Push callback invoked by VisionManager's subscriber worker thread.
         Frame arrives pre-flipped (mirror view) via SubscriberConfig.
         No draw_overlays — no display consumer exists for the overlaid frame.
+        Pure consumer: the frame is processed and discarded, never cached or
+        re-served (camera_ops pulls its own frame from VisionManager directly).
         """
         if not self.running:
             return
-
-        # VisionManager delivers a fresh array (result of cv2.flip or .copy),
-        # so storing the reference is safe — no downstream mutation.
-        with self._frame_lock:
-            self._latest_frame = frame
 
         gesture_state_manager.increment_frame_count()
 
