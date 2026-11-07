@@ -89,6 +89,35 @@ For a detailed breakdown of modules, threading logic, and network flows, see [ar
 
 ---
 
+## 🧩 Recent Architecture Enhancements
+
+Recent work hardened the vision stack and laid the groundwork for a plugin-based command system. All changes are backward compatible — existing gesture, voice, and command behaviour is preserved.
+
+### 🎞️ Modular Frame Processing Pipeline (VisionManager)
+Every captured camera frame now flows through a composable, two-tier pipeline before it reaches any consumer (`backend/vision/frame_pipeline.py`):
+
+*   **Global stage** — runs **once per frame**: frame validation → timestamping → metadata generation, with optional noise reduction. Pixel-preserving by default, so gesture tracking receives byte-for-byte identical frames.
+*   **Per-subscriber stage** — assembled from each subscriber's config: FPS limiting → resolution scaling → color conversion → horizontal flip. The FPS gate runs **first**, so frames that get dropped cost zero transform work.
+*   **Extensible by design** — new stages are added as `FrameProcessor` subclasses; no existing code is modified (Open/Closed principle). Frame metadata (id, timestamps, resolution) is exposed via `get_latest_metadata()`.
+
+### 🔌 Plugin Architecture Foundation
+A generic, class-based plugin framework now lives in `backend/plugins/` (framework only — no commands migrated yet, so the live dispatcher is untouched):
+
+*   **`Plugin` interface** — declares metadata, supported commands, lifecycle hooks (`on_load`/`on_enable`/`on_disable`/`on_unload`), and an independent `execute()`.
+*   **`PluginRegistry`** — enforces exclusive plugin-name and intent ownership.
+*   **`PluginManager`** — handles discovery → load → enable/disable/unload plus priority-ordered dispatch.
+*   **Auto-discovery** — plugins are found by scanning subpackages; a misbehaving plugin is quarantined in an `ERROR` state instead of crashing the app.
+
+### 🛡️ Command Routing Hardening
+Several intent-matching bugs were fixed in `backend/assistant/`:
+
+*   **Whole-word matching** for `ip` / `date` / `time` — "swipe the chrome" no longer triggers an IP lookup, and "update…" no longer reads as a date query.
+*   **Folder commands require an open-intent verb** — "minimise the desktop" no longer wrongly opens the Desktop folder.
+*   **Cleaner search-query extraction** — leftover connectives ("and", "about") and stray whitespace are stripped, so *"google and search about chat gpt"* searches for `chat gpt`.
+*   Fixed a *"Closing the tab tab"* grammar glitch when closing browser tabs.
+
+---
+
 ## 📁 Project Folder Structure
 
 The project code is organized as follows:
@@ -199,6 +228,19 @@ To compile it:
 *   **Speak Directly**: If `ALWAYS_LISTEN` is active, say commands like *"open YouTube"* or *"what is the time"*.
 *   **Double-Clap**: Clap twice within 1.2 seconds to manually wake Jarvis up.
 *   **Press Enter**: Press `ENTER` in the command window to pause recording and type commands directly.
+
+---
+
+## 🩺 Troubleshooting
+
+### `ImportError: DLL load failed ... An Application Control policy has blocked this file`
+On **Windows 11 with Smart App Control enforced**, MediaPipe fails to import because it eagerly pulls in **matplotlib**, whose unsigned native DLLs (`_image`, `ft2font`, `_path`) get blocked at load. Jarvis never uses matplotlib's plotting, so `backend/vision/hand_tracking.py` registers a lightweight matplotlib stub in `sys.modules` **before** importing MediaPipe — letting it load without the blocked DLLs while keeping Smart App Control on. (Numpy and OpenCV are unaffected; only matplotlib is blocked.) The alternative is to disable Smart App Control in *Windows Security → App & browser control*, but that is **irreversible** without a Windows reset.
+
+### Run with the project's virtual environment
+Launch Jarvis with the venv interpreter so the intended Python (3.12) and its dependencies are used:
+```powershell
+.venv\Scripts\python.exe jarvis.py
+```
 
 ---
 
