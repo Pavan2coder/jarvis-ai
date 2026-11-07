@@ -111,11 +111,12 @@ def main():
     ui_thread.start()
     print("  🌐  UI server running on http://localhost:5050")
 
-    def launch_hud():
-        time.sleep(1.2)
-        print("  🖥️   Launching HUD at http://localhost:5050")
-        webbrowser.open("http://localhost:5050")
-    threading.Thread(target=launch_hud, daemon=True).start()
+    if os.environ.get("JARVIS_NO_BROWSER") != "1":
+        def launch_hud():
+            time.sleep(1.2)
+            print("  🖥️   Launching HUD at http://localhost:5050")
+            webbrowser.open("http://localhost:5050")
+        threading.Thread(target=launch_hud, daemon=True).start()
 
     # Check the Gemini AI brain
     ok, msg = brain.verify_gemini()
@@ -168,11 +169,19 @@ def main():
 
     from backend.websocket.socket_manager import manager as ws_manager
     from backend.system import gesture_engine
+    from backend.vision.vision_manager import stop_vision
+    from backend.vision import virtual_keyboard
 
     shutdown_manager.register_handler("queue_and_worker", cleanup_queue_and_worker, priority=10)
     shutdown_manager.register_handler("websockets", ws_manager.close_all_sync, priority=20)
     shutdown_manager.register_handler("gesture_engine", gesture_engine.stop_gestures, priority=30)
+    shutdown_manager.register_handler("virtual_keyboard", virtual_keyboard.stop_keyboard, priority=30)
     shutdown_manager.register_handler("audio_engine", cleanup_audio_engine, priority=30)
+    # VisionManager is the single camera owner (lazily started by gesture/OCR/photo
+    # capture). Release the device after gesture has unsubscribed (priority 30) but
+    # before state persistence, so the webcam is freed cleanly regardless of which
+    # feature opened it.
+    shutdown_manager.register_handler("vision_manager", stop_vision, priority=35)
     shutdown_manager.register_handler("state_persistence", persist_states, priority=40)
 
     # Console typing always works
@@ -192,4 +201,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
