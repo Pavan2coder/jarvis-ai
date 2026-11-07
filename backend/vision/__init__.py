@@ -1,11 +1,29 @@
 # J.A.R.V.I.S OS vision sub-package.
 
 from backend.vision.frame_provider import CameraConfig, FrameProvider
+from backend.vision.frame_pipeline import (
+    ColorConverter,
+    FpsLimiter,
+    FrameContext,
+    FramePipeline,
+    FrameProcessor,
+    FrameValidator,
+    HorizontalFlip,
+    MetadataGenerator,
+    NoiseReducer,
+    ProcessedFrame,
+    ResolutionScaler,
+    Timestamper,
+    default_pipeline,
+)
 from backend.vision.vision_manager import (
     MANAGER,
     SubscriberConfig,
     VisionManager,
+    build_subscriber_pipeline,
     get_latest_frame,
+    get_latest_metadata,
+    get_pipeline,
     start_vision,
     stop_vision,
     subscribe,
@@ -36,6 +54,23 @@ __all__ = [
     "subscribe",
     "unsubscribe",
     "get_latest_frame",
+    "get_latest_metadata",
+    "get_pipeline",
+    "build_subscriber_pipeline",
+    # Frame pipeline
+    "FramePipeline",
+    "FrameProcessor",
+    "FrameContext",
+    "ProcessedFrame",
+    "default_pipeline",
+    "FrameValidator",
+    "Timestamper",
+    "MetadataGenerator",
+    "FpsLimiter",
+    "ResolutionScaler",
+    "ColorConverter",
+    "HorizontalFlip",
+    "NoiseReducer",
     # OCR engine
     "OCRConfig",
     "OCRRegion",
