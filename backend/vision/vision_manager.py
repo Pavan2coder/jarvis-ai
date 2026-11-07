@@ -234,9 +234,14 @@ class VisionManager:
         self._capture_thread: Optional[threading.Thread] = None
         self._running = False
 
+        # Shared, once-per-frame processing chain (validate/timestamp/metadata by
+        # default; extend with pipeline.add(...) — see frame_pipeline.py).
+        self._pipeline: FramePipeline = default_pipeline()
+
         # Pull-style access (camera_ops, snapshots, etc.)
         self._frame_lock = threading.Lock()
         self._latest_frame: Optional[np.ndarray] = None
+        self._latest_processed: Optional[ProcessedFrame] = None
 
         # Subscriber registry
         self._subs_lock = threading.RLock()
@@ -306,6 +311,7 @@ class VisionManager:
 
         with self._frame_lock:
             self._latest_frame = None
+            self._latest_processed = None
 
         log.info("VisionManager stopped")
 
@@ -368,6 +374,28 @@ class VisionManager:
         with self._frame_lock:
             return self._latest_frame.copy() if self._latest_frame is not None else None
 
+    def get_latest_metadata(self) -> Optional[Dict[str, object]]:
+        """
+        Return a copy of the metadata attached to the most recent frame by the
+        pipeline (frame_id, width, height, channels, dtype, timestamps, …), or
+        None if no frame has been processed yet. Thread-safe.
+        """
+        with self._frame_lock:
+            if self._latest_processed is None:
+                return None
+            return dict(self._latest_processed.context.metadata)
+
+    # ---- pipeline ------------------------------------------------------------
+
+    @property
+    def pipeline(self) -> FramePipeline:
+        """
+        The shared frame-processing pipeline. Extend without touching manager
+        code, e.g. ``MANAGER.pipeline.add(NoiseReducer())`` or
+        ``MANAGER.pipeline.set_enabled("noise_reduction", True)``.
+        """
+        return self._pipeline
+
     # ---- status --------------------------------------------------------------
 
     @property
@@ -396,36 +424,32 @@ class VisionManager:
 
             consecutive_failures = 0
 
-            # Update pull-style latest frame (raw, no copy needed — only this
-            # thread writes _latest_frame; readers copy under lock)
+            # Global, once-per-frame processing before any distribution.
+            # With the default pipeline this validates + timestamps + tags
+            # metadata WITHOUT altering pixels, so downstream frames are
+            # byte-identical to the pre-pipeline behaviour. A None result means
+            # a stage (e.g. validation) rejected the frame — skip it entirely.
+            result = self._pipeline.run(frame)
+            if result is None:
+                continue
+            frame = result.frame
+
+            # Update pull-style latest frame (no copy needed — only this thread
+            # writes _latest_frame; readers copy under lock). Cache the full
+            # ProcessedFrame so get_latest_metadata() can expose its context.
             with self._frame_lock:
                 self._latest_frame = frame
+                self._latest_processed = result
 
-            # Broadcast preprocessed copies to all subscribers
+            # Fan out: each subscriber runs its own transform chain (fps gate →
+            # resize → color → flip) against the shared processed frame.
             with self._subs_lock:
                 handles = list(self._subscribers.values())
 
             for handle in handles:
-                processed = self._preprocess(frame, handle.config)
-                handle.put_frame(processed)
+                handle.deliver(frame, result.context)
 
         log.info("Vision capture loop ended")
-
-    def _preprocess(self, frame: np.ndarray, cfg: SubscriberConfig) -> np.ndarray:
-        """
-        Apply per-subscriber transforms.  Always returns a new array.
-
-        Flip is applied first so that resize/grayscale operate on the
-        correctly-oriented image.  OCR and face recognition must NOT flip
-        (mirroring reverses text and lateralises face descriptors).
-        """
-        # cv2.flip returns a new ndarray; frame.copy() is used when no flip is needed
-        out = cv2.flip(frame, 1) if cfg.flip_horizontal else frame.copy()
-        if cfg.resize is not None:
-            out = cv2.resize(out, cfg.resize)
-        if cfg.grayscale:
-            out = cv2.cvtColor(out, cv2.COLOR_BGR2GRAY)
-        return out
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -474,6 +498,25 @@ def get_latest_frame() -> Optional[np.ndarray]:
     if MANAGER is None:
         return None
     return MANAGER.get_latest_frame()
+
+
+def get_latest_metadata() -> Optional[Dict[str, object]]:
+    """Pipeline metadata for the most recent frame.  Returns None if not running."""
+    if MANAGER is None:
+        return None
+    return MANAGER.get_latest_metadata()
+
+
+def get_pipeline() -> Optional[FramePipeline]:
+    """
+    The shared FramePipeline (creating the manager if needed) so callers can add
+    or toggle stages before start_vision().  Returns the pipeline, never None
+    once accessed.
+    """
+    global MANAGER
+    if MANAGER is None:
+        MANAGER = VisionManager()
+    return MANAGER.pipeline
 
 
 # ──────────────────────────────────────────────────────────────────────────────
