@@ -1,5 +1,23 @@
 import time
 import cv2
+
+# ── Smart App Control shim ──────────────────────────────────────────────────
+# Windows 11 Smart App Control (enforced on this machine) blocks matplotlib's
+# unsigned native DLLs (_image/ft2font/_path), which MediaPipe imports eagerly
+# via its landmark-plotting drawing_utils. Jarvis never uses that plotting code,
+# so we register a lightweight matplotlib stub before importing mediapipe: its
+# top-level `import matplotlib.pyplot` then succeeds without loading the blocked
+# DLLs. Remove this if Smart App Control is disabled or matplotlib is unblocked.
+import sys as _sys
+import types as _types
+if "matplotlib" not in _sys.modules:
+    _mpl = _types.ModuleType("matplotlib")
+    _mpl.__version__ = "0.0.0-sac-stub"
+    _mpl.pyplot = _types.ModuleType("matplotlib.pyplot")
+    _sys.modules["matplotlib"] = _mpl
+    _sys.modules["matplotlib.pyplot"] = _mpl.pyplot
+# ────────────────────────────────────────────────────────────────────────────
+
 import mediapipe as mp
 
 class HandTracker:
