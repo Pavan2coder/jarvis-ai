@@ -6,6 +6,9 @@ Removed from legacy implementation:
   - _run_loop capture thread
   - Manual frame flip (handled by SubscriberConfig flip_horizontal=True)
   - draw_overlays calls (no display consumer — dead CPU at 30 fps)
+  - self._latest_frame cache + get_latest_frame() — camera_ops now pulls
+    straight from VisionManager.get_latest_frame(), so the engine no longer
+    doubles as a frame source. It is now a pure frame *consumer*.
 
 Frame flow
 ──────────
@@ -18,19 +21,13 @@ Frame flow
       ├─ GestureActionsManager (stabilize + discrete actions)
       └─ VirtualMouse (continuous mouse mode)
 
-Companion change pending
-────────────────────────
-  camera_ops.py fallback (lines 54-73) opens its own cv2.VideoCapture when
-  gesture engine is not running. Post-refactor, VisionManager owns the device
-  even when gesture is stopped. Update that fallback to:
-
-      from backend.vision.vision_manager import get_latest_frame
-      frame = get_latest_frame()
-
-  so it pulls from VisionManager instead of racing for the device.
+Companion change (done)
+───────────────────────
+  camera_ops.capture_photo() no longer opens its own cv2.VideoCapture. It now
+  pulls from the shared VisionManager (start_vision + get_latest_frame), so it
+  never races the capture loop for the device. VisionManager is released at
+  shutdown via the "vision_manager" handler registered in backend/main.py.
 """
-
-import threading
 
 from backend.core import config
 from backend.vision.hand_tracking import HandTracker
@@ -47,8 +44,6 @@ ENGINE = None
 class GestureEngine:
     def __init__(self):
         self.running = False
-        self._latest_frame = None
-        self._frame_lock = threading.Lock()
 
         self.tracker = HandTracker()
         self.mouse = VirtualMouse()
