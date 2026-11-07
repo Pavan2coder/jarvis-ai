@@ -253,10 +253,12 @@ class VirtualMouse:
         Maps hand landmark coordinates (either list of landmarks or single tip)
         into virtual screen coordinates and applies Kalman Filter smoothing with ballistics.
         """
-        if isinstance(landmark_or_landmarks, list):
-            px, py = self.palm_center(landmark_or_landmarks)
-        else:
+        # A single landmark has an .x attribute; a landmark collection (Python list
+        # OR MediaPipe's RepeatedCompositeContainer) does not — index it via palm_center.
+        if hasattr(landmark_or_landmarks, "x"):
             px, py = landmark_or_landmarks.x, landmark_or_landmarks.y
+        else:
+            px, py = self.palm_center(landmark_or_landmarks)
 
         margin = (1.0 - self.zone) / 2.0
         tx = np.clip((px - margin) / self.zone, 0.0, 1.0) * VIRT_W + VIRT_X
@@ -318,12 +320,12 @@ class VirtualMouse:
 
     def handle_scrolling(self, landmarks):
         """Tracks V-sign coordinates to control page scroll actions with ctypes."""
-        if len(landmarks) > 12:
+        # Single landmark (.x present) vs a collection (list / RepeatedCompositeContainer).
+        if hasattr(landmarks, "x"):
+            x_mid, y_mid = landmarks.x, landmarks.y
+        else:
             x_mid = (landmarks[8].x + landmarks[12].x) / 2.0
             y_mid = (landmarks[8].y + landmarks[12].y) / 2.0
-        else:
-            # Fallback if only a single landmark is provided
-            x_mid, y_mid = landmarks.x, landmarks.y
             
         if self.prev_scroll_y is not None:
             dy = y_mid - self.prev_scroll_y
