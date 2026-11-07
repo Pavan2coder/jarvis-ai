@@ -10,10 +10,15 @@ Architecture
          ▼
   VisionManager._capture_loop          ← single daemon thread owns the device
          │
-         │  _preprocess(frame, cfg)    ← per-subscriber transforms applied here
-         │    flip_horizontal           (gesture = True;  OCR/face = False)
-         │    resize                    (optional downsample)
-         │    grayscale                 (optional for OCR)
+         │  FramePipeline.run(frame)   ← GLOBAL, once per frame, before fan-out
+         │    validate → timestamp → metadata   (default: pixel-preserving)
+         │    [noise_reduction … global opt-in, see frame_pipeline]
+         │
+         │  handle.deliver(frame, ctx) ← PER-SUBSCRIBER chain (built from config)
+         │    fps_limiter               (drops gated frames before any transform)
+         │    resolution_scale          (optional downsample)
+         │    color_convert             (optional grayscale)
+         │    horizontal_flip           (gesture = True;  OCR/face = False)
          │
     ┌────┼────┬──────────────┐
     ▼    ▼    ▼              ▼
@@ -66,6 +71,16 @@ import cv2
 import numpy as np
 
 from backend.vision.frame_provider import CameraConfig, FrameProvider
+from backend.vision.frame_pipeline import (
+    ColorConverter,
+    FrameContext,
+    FramePipeline,
+    FpsLimiter,
+    HorizontalFlip,
+    ProcessedFrame,
+    ResolutionScaler,
+    default_pipeline,
+)
 
 log = logging.getLogger("JARVIS.vision.manager")
 
