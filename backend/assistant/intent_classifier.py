@@ -190,13 +190,13 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         confidence = 0.98
         if "open youtube and search" in normalized:
             entities["action"] = "search_youtube"
-            entities["query"] = normalized.split("open youtube and search")[-1].strip()
+            entities["query"] = clean_query(normalized.split("open youtube and search")[-1])
         elif "open github and search" in normalized:
             entities["action"] = "search_github"
-            entities["query"] = normalized.split("open github and search")[-1].strip()
+            entities["query"] = clean_query(normalized.split("open github and search")[-1])
         elif "search google for" in normalized:
             entities["action"] = "search_google"
-            entities["query"] = normalized.split("search google for")[-1].strip()
+            entities["query"] = clean_query(normalized.split("search google for")[-1])
         
     # 2. DIAGNOSTICS INTENT
     elif any(phrase in normalized for phrase in ["cpu", "ram", "gpu", "processor", "memory", "graphics", "system info", "diagnostics"]):
@@ -254,7 +254,7 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
         query = normalized
         for word in ["search for", "search", "google", "look up", "lookup", "please"]:
             query = re.sub(r'\b' + re.escape(word) + r'\b', '', query)
-        entities["query"] = query.strip()
+        entities["query"] = clean_query(query)
         
     # 6. SYSTEM_CONTROL INTENT
     elif any(x in normalized for x in ["volume", "brightness", "dim", "mute", "silence", "shutdown", "shut down", "restart", "reboot", "lock", "sleep"]):
