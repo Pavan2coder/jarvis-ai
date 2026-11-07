@@ -1,6 +1,7 @@
 fastapi>=0.110.0
-uvicorn>=0.28.0
-numpy>=1.24.0
+uvicorn[standard]>=0.28.0
+# numpy pinned <2: mediapipe 0.10.21 requires numpy<2.
+numpy>=1.24.0,<2
 PyAudio>=0.2.14
 SpeechRecognition>=3.10.0
 pyttsx3>=2.90
@@ -11,6 +12,12 @@ pyautogui>=0.9.54
 screen-brightness-control>=0.2.3
 pycaw>=20181106
 comtypes>=1.2.0
-opencv-python>=4.9.0
-mediapipe>=0.10.11
+# Vision stack is version-locked. Do NOT loosen to `>=`: the unbounded ranges
+# pulled broken/typosquatted "opencv-python 5.0.0.93" and "mediapipe 0.10.35"
+# from PyPI (inflated version numbers, missing native code / mp.solutions).
+# opencv-contrib-python is the real cv2 superset that mediapipe depends on.
+opencv-contrib-python==4.11.0.86
+mediapipe==0.10.21
 playwright>=1.60.0
+# setuptools provides the distutils shim GPUtil needs on Python 3.12+.
+setuptools
