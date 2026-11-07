@@ -3,6 +3,45 @@ import json
 from backend.utils.dotenv import load_dotenv
 from backend.utils.logger import logger
 
+
+def _resolve_user_folders():
+    """Resolve the user's real known-folder paths.
+
+    On Windows, Desktop/Documents/Pictures are often redirected into OneDrive,
+    so a naive ~/Desktop does not exist. Query the authoritative User Shell
+    Folders registry (which reflects the redirection) and fall back to ~/name.
+    """
+    home = os.path.expanduser("~")
+    names = ["Desktop", "Downloads", "Documents", "Pictures", "Music", "Videos", "Projects"]
+    folders = {n.lower(): os.path.join(home, n) for n in names}
+
+    if os.name == "nt":
+        # registry value name for each known folder
+        reg_names = {
+            "desktop": "Desktop",
+            "downloads": "{374DE290-123F-4565-9164-39C4925E467B}",
+            "documents": "Personal",
+            "pictures": "My Pictures",
+            "music": "My Music",
+            "videos": "My Video",
+        }
+        try:
+            import winreg
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders",
+            ) as key:
+                for folder, reg_name in reg_names.items():
+                    try:
+                        raw, _ = winreg.QueryValueEx(key, reg_name)
+                        folders[folder] = os.path.expandvars(raw)
+                    except OSError:
+                        pass  # value missing — keep the ~/name default
+        except OSError:
+            pass  # registry unavailable — keep all ~/name defaults
+
+    return folders
+
 class Settings:
     def __init__(self):
         # 1. Load variables from root .env file
@@ -66,16 +105,8 @@ class Settings:
         self.SPOTIFY_PLAYLISTS = self.commands_data.get("spotify_playlists", {})
         self.jokes = self.commands_data.get("jokes", [])
         
-        # 5. Build dynamic system folders paths
-        self.FOLDERS = {
-            "desktop":   os.path.join(os.path.expanduser("~"), "Desktop"),
-            "downloads": os.path.join(os.path.expanduser("~"), "Downloads"),
-            "documents": os.path.join(os.path.expanduser("~"), "Documents"),
-            "pictures":  os.path.join(os.path.expanduser("~"), "Pictures"),
-            "music":     os.path.join(os.path.expanduser("~"), "Music"),
-            "videos":    os.path.join(os.path.expanduser("~"), "Videos"),
-            "projects":  os.path.join(os.path.expanduser("~"), "Projects"),
-        }
+        # 5. Build dynamic system folders paths (honours OneDrive redirection)
+        self.FOLDERS = _resolve_user_folders()
         
         self.SYSTEM_PROMPT = (
             f"You are JARVIS, a witty, concise personal AI assistant for {self.YOUR_NAME}. "
