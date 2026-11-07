@@ -112,11 +112,40 @@ class SubscriberConfig:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# Per-subscriber pipeline factory
+# ──────────────────────────────────────────────────────────────────────────────
+
+def build_subscriber_pipeline(config: SubscriberConfig) -> FramePipeline:
+    """
+    Assemble a subscriber's transform chain from its SubscriberConfig, using the
+    same FrameProcessor building blocks as the global pipeline.
+
+    Stage order (only stages the config requests are included):
+
+        FpsLimiter → ResolutionScaler → ColorConverter → HorizontalFlip
+
+    The FPS limiter is first so gated frames are dropped before any transform
+    work is spent. A config with no options yields an empty pipeline (the frame
+    is passed through unchanged, then copied for isolation by the caller).
+    """
+    stages = []
+    if config.fps_limit:
+        stages.append(FpsLimiter(config.fps_limit))
+    if config.resize is not None:
+        stages.append(ResolutionScaler(config.resize))
+    if config.grayscale:
+        stages.append(ColorConverter(cv2.COLOR_BGR2GRAY))
+    if config.flip_horizontal:
+        stages.append(HorizontalFlip())
+    return FramePipeline(stages)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # Internal subscriber handle
 # ──────────────────────────────────────────────────────────────────────────────
 
 class _SubscriberHandle:
-    """Manages one subscriber's queue, worker thread, and fps gate."""
+    """Manages one subscriber's per-subscriber pipeline, queue, and worker thread."""
 
     def __init__(
         self,
@@ -127,12 +156,11 @@ class _SubscriberHandle:
         self.name = name
         self.callback = callback
         self.config = config
+        self.pipeline = build_subscriber_pipeline(config)
 
         self._queue: queue.Queue[np.ndarray] = queue.Queue(maxsize=config.queue_maxsize)
         self._stop = threading.Event()
         self._thread: Optional[threading.Thread] = None
-        self._last_frame_ts: float = 0.0
-        self._min_interval: float = (1.0 / config.fps_limit) if config.fps_limit else 0.0
 
     # ---- lifecycle -----------------------------------------------------------
 
@@ -155,14 +183,22 @@ class _SubscriberHandle:
 
     # ---- frame delivery ------------------------------------------------------
 
-    def put_frame(self, frame: np.ndarray) -> None:
-        """Non-blocking. Silently drops if subscriber queue is full or fps-gated."""
-        now = time.monotonic()
-        if self._min_interval and (now - self._last_frame_ts) < self._min_interval:
+    def deliver(self, frame: np.ndarray, ctx: FrameContext) -> None:
+        """
+        Run this subscriber's transform chain, then enqueue non-blockingly.
+
+        Called from the capture thread. A None result means a stage dropped the
+        frame for this subscriber (e.g. the FPS limiter gated it) — nothing is
+        enqueued. When no stage produced a new array, the frame is copied so
+        subscribers never alias each other's (or the manager's) buffer.
+        """
+        out = self.pipeline.apply(frame, ctx.derive())
+        if out is None:
             return
-        self._last_frame_ts = now
+        if out is frame:
+            out = frame.copy()
         try:
-            self._queue.put_nowait(frame)
+            self._queue.put_nowait(out)
         except queue.Full:
             pass  # subscriber is overloaded; drop this frame
 
