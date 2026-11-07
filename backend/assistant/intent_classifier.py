@@ -45,6 +45,17 @@ def normalize_text(text: str) -> str:
         
     return text
 
+_QUERY_LEADING_FILLER = re.compile(r'^(?:(?:and|about|for|to|me|the|on)\b\s*)+')
+
+def clean_query(text: str) -> str:
+    """Tidy an extracted search query: collapse whitespace and strip leading
+    connective filler ('and', 'about', 'for', …) left over after trigger words
+    are removed, so 'google and search about chat gpt' yields 'chat gpt' rather
+    than 'and  about chat gpt'."""
+    text = re.sub(r'\s+', ' ', text).strip()
+    text = _QUERY_LEADING_FILLER.sub('', text).strip()
+    return text
+
 def extract_number(text: str) -> int:
     """Extracts a percentage or value number from text (e.g. 'set volume to 80')."""
     match = re.search(r'\b(\d{1,3})\b', text)
@@ -126,51 +137,32 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
     confidence = 0.5
     entities = {}
     
-    # 0. GESTURE CONTROL INTENTS (fuzzy matching & conflict prevention)
-    best_enable, enable_score = get_best_alias_match(normalized, ENABLE_GESTURE_ALIASES, threshold=0.80)
-    best_disable, disable_score = get_best_alias_match(normalized, DISABLE_GESTURE_ALIASES, threshold=0.80)
-    
-    if enable_score >= 0.80 and disable_score >= 0.80 and abs(enable_score - disable_score) < 0.03:
-        # Contradictory fuzzy scoring (both match above threshold with negligible difference)
-        logger.warning(f"Contradictory gesture command detected via fuzzy matching: '{raw_text}' (enable={enable_score:.2f}, disable={disable_score:.2f})")
-    elif enable_score > disable_score and enable_score >= 0.80:
+    # 0. VIRTUAL KEYBOARD INTENTS — checked BEFORE gesture (since "gesture keyboard"
+    #    also contains "gesture") and before open/close app (so "open/close keyboard"
+    #    don't route to app launch/kill).
+    if "keyboard" in normalized or "air type" in normalized:
+        if any(w in normalized for w in ["close", "hide", "stop", "disable", "exit", "quit"]) or re.search(r"\boff\b", normalized):
+            return {"intent": "disable_keyboard", "confidence": 0.95, "entities": {}, "raw_text": raw_text}
+        return {"intent": "enable_keyboard", "confidence": 0.95, "entities": {}, "raw_text": raw_text}
+
+    # 0.1 GESTURE / VIRTUAL-MOUSE CONTROL INTENTS.
+    #     Deterministic: if the command is about gesture control (or hand/virtual
+    #     mouse), decide enable vs disable by explicit keywords, DEFAULTING TO
+    #     ENABLE when no disable word is present. So "open hand gesture control",
+    #     "gesture control", "start gestures" all ENABLE; only "stop/disable/turn
+    #     off/deactivate" DISABLE. (Replaces fuzzy matching that mislabeled
+    #     "open hand gesture control" as disable.)
+    gesture_ctx = bool(re.search(r"\b(gesture|gestures)\b", normalized)) or \
+                  any(p in normalized for p in ["virtual mouse", "mouse control", "hand mouse", "hand control"])
+    if gesture_ctx:
+        is_disable = bool(re.search(r"\b(stop|disable|deactivate|quit|end|close|kill|off)\b", normalized))
         return {
-            "intent": "enable_gestures",
-            "confidence": float(enable_score),
+            "intent": "disable_gestures" if is_disable else "enable_gestures",
+            "confidence": 0.95,
             "entities": {},
-            "raw_text": raw_text
-        }
-    elif disable_score > enable_score and disable_score >= 0.80:
-        return {
-            "intent": "disable_gestures",
-            "confidence": float(disable_score),
-            "entities": {},
-            "raw_text": raw_text
+            "raw_text": raw_text,
         }
 
-    # Keyword fallback for standard regex-based matching
-    has_gesture_kw = bool(re.search(r'\b(gesture|gestures|camera)\b', normalized))
-    if has_gesture_kw:
-        has_enable = bool(re.search(r'\b(start|enable|on|activate|initialize)\b', normalized))
-        has_disable = bool(re.search(r'\b(stop|disable|off|quit|deactivate)\b', normalized))
-        
-        if has_enable and has_disable:
-            logger.warning(f"Contradictory gesture command detected: '{raw_text}'")
-        elif has_enable:
-            return {
-                "intent": "enable_gestures",
-                "confidence": 0.90,
-                "entities": {},
-                "raw_text": raw_text
-            }
-        elif has_disable:
-            return {
-                "intent": "disable_gestures",
-                "confidence": 0.90,
-                "entities": {},
-                "raw_text": raw_text
-            }
-            
     # 1. CAMERA_CAPTURE INTENT
     if any(phrase in normalized for phrase in ["take photo", "capture image", "save picture", "selfie", "take a photo", "take a selfie", "take picture", "take a picture"]):
         intent = "camera_capture"
