@@ -118,6 +118,20 @@ def main():
             webbrowser.open("http://localhost:5050")
         threading.Thread(target=launch_hud, daemon=True).start()
 
+    # Dynamic Island overlay (separate process: Tk wants its own main thread).
+    # It also exits on its own if this process dies (--parent watchdog).
+    island = None
+    if os.environ.get("JARVIS_NO_ISLAND") != "1":
+        import subprocess
+        try:
+            island = subprocess.Popen(
+                [sys.executable, "-m", "ui.dynamic_island", "--parent", str(os.getpid())],
+                cwd=project_root,
+            )
+            print("  🏝️   Dynamic Island launched")
+        except Exception as e:
+            print(f"  ⚠️  Could not launch Dynamic Island: {e}")
+
     # Check the Gemini AI brain
     ok, msg = brain.verify_gemini()
     print(f"  🧠  {msg}")
@@ -177,6 +191,8 @@ def main():
     shutdown_manager.register_handler("gesture_engine", gesture_engine.stop_gestures, priority=30)
     shutdown_manager.register_handler("virtual_keyboard", virtual_keyboard.stop_keyboard, priority=30)
     shutdown_manager.register_handler("audio_engine", cleanup_audio_engine, priority=30)
+    if island is not None:
+        shutdown_manager.register_handler("dynamic_island", island.terminate, priority=30)
     # VisionManager is the single camera owner (lazily started by gesture/OCR/photo
     # capture). Release the device after gesture has unsubscribed (priority 30) but
     # before state persistence, so the webcam is freed cleanly regardless of which
