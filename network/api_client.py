@@ -130,8 +130,13 @@ class GeminiProvider(LLMProvider):
 
         body: Dict[str, Any] = {
             "contents": contents,
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 256},
+            # thinkingBudget 0: 2.5-flash otherwise spends the token budget on
+            # hidden reasoning -> slow AND truncated spoken replies.
+            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 256,
+                                 "thinkingConfig": {"thinkingBudget": 0}},
         }
+        if tools:
+            body["tools"] = tools
 
         if system_instruction:
             body["system_instruction"] = {"parts": [{"text": system_instruction}]}
