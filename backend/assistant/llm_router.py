@@ -3,14 +3,41 @@ from backend.core import config
 from backend.utils.logger import logger
 from backend.assistant import brain
 
+# The agent tool: Gemini rewrites a fuzzy request into plain commands that the
+# rule-based plugins already understand, so every plugin is reachable by the LLM.
+AGENT_TOOLS = [{"functionDeclarations": [{
+    "name": "run_commands",
+    "description": (
+        "Perform actions on the user's Windows PC. Use whenever the user wants "
+        "something DONE rather than answered. Each command must use one of these forms: "
+        "'open <app name>', 'close <app name>', 'open <name> folder', "
+        "'play <song/artist/mood> on spotify', 'search google for <query>', "
+        "'open youtube and search <query>', 'set volume to <0-100>', "
+        "'set brightness to <0-100>', 'mute', 'take a screenshot', 'take a photo', "
+        "'lock the pc', 'battery', 'cpu usage', 'ram usage', 'start gesture control', "
+        "'stop gesture control', 'prepare coding setup', 'prepare study mode'."
+    ),
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "commands": {"type": "ARRAY", "items": {"type": "STRING"},
+                         "description": "Commands to run, in order."},
+        },
+        "required": ["commands"],
+    },
+}]}]
+
+
 class LLMRouter:
     def __init__(self):
         self.ollama_url = config.OLLAMA_URL
         self.ollama_model = config.OLLAMA_MODEL
         self.system_prompt = config.SYSTEM_PROMPT
 
-    def ask_llm(self, prompt: str) -> str:
-        """Centralized router that attempts to answer with local personality rules,
+    def ask_llm(self, prompt: str, tools=None):
+        """Returns spoken text, or (with tools) a list of Gemini function calls.
+
+        Centralized router that attempts to answer with local personality rules,
         Google Gemini, and falls back to a local Ollama instance upon failures.
         """
         logger.info(f"Routing prompt: '{prompt[:40]}...'")
