@@ -90,6 +90,15 @@ def handle_folder_command(command) -> bool:
     # would wrongly open that folder. Match names as whole words too, so
     # "music" doesn't fire on "musical".
     open_ctx = any(v in command for v in ("open", "go to", "show", "launch", "browse", "navigate"))
+    # "open the ERP folder on desktop" -> find "erp" before the generic
+    # "desktop" match below swallows it.
+    if open_ctx and re.search(r"\b(folder|directory|file|desktop|documents|downloads)\b", command):
+        name = re.sub(r"\s+", " ", _ITEM_FILLER.sub(" ", command)).strip()
+        path = find_item(name) if name and not os.path.isabs(name) else None
+        if path:
+            speak(f"Opening {os.path.basename(path)}.")
+            open_folder(path)
+            return True
     if open_ctx:
         for name, path in config.FOLDERS.items():
             if re.search(r"\b" + re.escape(name) + r"\b", command):
