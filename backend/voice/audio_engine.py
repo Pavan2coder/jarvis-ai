@@ -355,22 +355,24 @@ class AudioEngine:
     def capture_phrase(self, start_timeout=6, max_seconds=8):
         ui_server.set_ui("listening", message="Listening...")
         frames, started, silent, waited = [], False, 0, 0
+        pre = deque(maxlen=self.preroll_chunks)
         start_limit = int(start_timeout * config.SAMPLE_RATE / config.CHUNK)
         max_chunks  = int(max_seconds  * config.SAMPLE_RATE / config.CHUNK)
         while True:
             try:
-                _, cleaned_data, _, _, cleaned_vol, _ = self._read()
+                raw_data, _, _, _, cleaned_vol, _ = self._read()
             except Exception:
                 return None
             if not started:
                 waited += 1
+                pre.append(raw_data)
                 if cleaned_vol > self.activation_threshold:
                     started, silent = True, 0
-                    frames.append(cleaned_data)
+                    frames = list(pre)
                 elif waited > start_limit:
                     return None                       # nothing said
             else:
-                frames.append(cleaned_data)
+                frames.append(raw_data)
                 if cleaned_vol < self.deactivation_threshold:
                     silent += 1
                     if silent >= self.silence_chunks:
