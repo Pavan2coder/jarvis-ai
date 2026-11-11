@@ -154,3 +154,13 @@ INTENTS = {}
 FALLBACKS = [
     (20, play_spotify),
 ]
+
+
+if __name__ == "__main__":
+    # Self-check of query extraction (no Spotify needed).
+    for cmd, want in [("play believer by imagine dragons on spotify", "believer by imagine dragons"),
+                      ("play some arijit singh songs", "arijit singh"),
+                      ("play kesariya", "kesariya")]:
+        got = re.sub(r"\s+", " ", _FILLER.sub(" ", cmd)).strip()
+        assert got == want, (cmd, got)
+    print("ok")
