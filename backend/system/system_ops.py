@@ -58,8 +58,11 @@ def set_volume_percent(pct):
         from comtypes import CLSCTX_ALL
         from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
         devices = AudioUtilities.GetSpeakers()
-        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-        vol = cast(interface, POINTER(IAudioEndpointVolume))
+        if hasattr(devices, "EndpointVolume"):   # pycaw >= 2025 wraps the device
+            vol = devices.EndpointVolume
+        else:
+            interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+            vol = cast(interface, POINTER(IAudioEndpointVolume))
         vol.SetMasterVolumeLevelScalar(max(0.0, min(1.0, pct / 100.0)), None)
         return True
     except Exception:
