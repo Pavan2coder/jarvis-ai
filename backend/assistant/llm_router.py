@@ -68,12 +68,14 @@ class LLMRouter:
                 answer = gemini_provider.generate(
                     prompt=prompt,
                     history=history_list,
-                    system_instruction=self.system_prompt
+                    system_instruction=self.system_prompt,
+                    tools=tools,
                 )
-                
+
                 # Synchronize back to the shared chat memory
+                remembered = answer if isinstance(answer, str) else f"(ran: {answer})"
                 brain.chat_history.append({"role": "user", "text": prompt})
-                brain.chat_history.append({"role": "model", "text": answer})
+                brain.chat_history.append({"role": "model", "text": remembered})
                 
                 logger.info(f"Success: Prompt resolved via Gemini model '{brain.GEMINI_MODEL}'")
                 return answer
