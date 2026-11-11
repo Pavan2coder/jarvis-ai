@@ -60,6 +60,29 @@ def _search(command, entities):
 
 # ── Fallback predicate handlers (Layer B) ──────────────────────────────────
 
+_ITEM_FILLER = re.compile(
+    r"\b(open|show|go to|launch|browse|navigate to|navigate|the|my|a|folder|directory|"
+    r"file|called|named|on|in|from|inside|please|desktop|downloads|documents)\b")
+
+
+def find_item(name):
+    """Fuzzy-find a top-level file/folder by spoken name on the Desktop,
+    then Documents, then Downloads. Returns its path or None."""
+    entries = {}
+    for key in ("desktop", "documents", "downloads"):
+        base = config.FOLDERS.get(key)
+        try:
+            for e in os.listdir(base):
+                stem = (e if os.path.isdir(os.path.join(base, e)) else os.path.splitext(e)[0]).lower()
+                entries.setdefault(stem, os.path.join(base, e))
+        except OSError:
+            continue
+    if name in entries:
+        return entries[name]
+    match = difflib.get_close_matches(name, list(entries), n=1, cutoff=0.7)
+    return entries[match[0]] if match else None
+
+
 def handle_folder_command(command) -> bool:
     # Only treat a folder-name mention as an "open folder" request when the
     # command actually asks to open/show it. Without this guard, unrelated
