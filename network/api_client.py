@@ -157,8 +157,11 @@ class GeminiProvider(LLMProvider):
                 logger.error(f"Gemini API returned unexpected structure: {data}")
                 raise APIException("Unexpected response format from Gemini API.")
                 
-            text = candidates[0]["content"]["parts"][0]["text"].strip()
-            return text
+            parts = candidates[0]["content"].get("parts", [])
+            calls = [p["functionCall"] for p in parts if "functionCall" in p]
+            if calls:
+                return calls
+            return " ".join(p.get("text", "") for p in parts).strip()
         except APIException as e:
             logger.error(f"Gemini generation API error: {e}")
             raise e
