@@ -59,5 +59,15 @@ class TestIntentClassifierGestures(unittest.TestCase):
             self.assertNotEqual(result["intent"], "enable_gestures", f"Failed conflict check for: {command}")
             self.assertNotEqual(result["intent"], "disable_gestures", f"Failed conflict check for: {command}")
 
+    def test_greeting_needs_whole_short_word(self):
+        # 'hi' inside 'something' used to hijack this into a greeting
+        self.assertEqual(classify_intent("i'm bored put on something by anirudh")["intent"], "query_llm")
+        self.assertEqual(classify_intent("hey what is a black hole")["intent"], "query_llm")
+        self.assertEqual(classify_intent("hi jarvis")["intent"], "greeting")
+
+    def test_folder_on_desktop_is_not_an_app(self):
+        self.assertNotEqual(classify_intent("open the erp folder on the desktop")["intent"], "open_app")
+        self.assertNotEqual(classify_intent("open erp on desktop")["intent"], "open_app")
+
 if __name__ == "__main__":
     unittest.main()
