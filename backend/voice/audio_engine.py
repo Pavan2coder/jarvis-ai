@@ -65,12 +65,16 @@ def listen(timeout=6, phrase_limit=8):
             print("\n  🎤 Listening...")
             recognizer.adjust_for_ambient_noise(source, duration=0.4)
             audio = recognizer.listen(source, timeout=timeout, phrase_time_limit=phrase_limit)
-            text = recognizer.recognize_google(audio).lower()
+            text = recognizer.recognize_google(audio, language=config.LANGUAGE).lower()
             print(f"  👤 You » {text}")
             ui_server.set_ui("thinking", message="Processing...", command=text)
             return text
     except Exception:
         return ""
+
+def _recognize(audio):
+    """Google speech-to-text in the configured accent (en-IN by default)."""
+    return sr.Recognizer().recognize_google(audio, language=config.LANGUAGE).lower()
 
 def _rms(data):
     return float(np.abs(np.frombuffer(data, dtype=np.int16)).mean())
