@@ -229,7 +229,7 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
             entities["app_name"] = candidate.strip()
             
     # 4. OPEN_APP INTENT
-    elif any(normalized.startswith(x) for x in ["open ", "launch ", "start "]) and not any(w in normalized for w in ["gesture", "folder", "directory"]):
+    elif any(normalized.startswith(x) for x in ["open ", "launch ", "start "]) and not any(w in normalized for w in ["gesture", "folder", "directory", "desktop", "documents", "downloads"]):
         # Extract candidate app target
         candidate = normalized
         for word in ["open", "launch", "start", "the app", "app", "window", "program", "please", "the"]:
