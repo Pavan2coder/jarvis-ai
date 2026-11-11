@@ -182,14 +182,20 @@ def main():
         print("  💾  System state persisted.")
 
     from backend.websocket.socket_manager import manager as ws_manager
-    from backend.system import gesture_engine
-    from backend.vision.vision_manager import stop_vision
-    from backend.vision import virtual_keyboard
+
+    # Vision modules pull in OpenCV + MediaPipe (~seconds, tens of MB). Only stop
+    # them if a command actually loaded them, instead of importing them at boot.
+    def _if_loaded(module, func):
+        def stop():
+            mod = sys.modules.get(module)
+            if mod is not None:
+                getattr(mod, func)()
+        return stop
 
     shutdown_manager.register_handler("queue_and_worker", cleanup_queue_and_worker, priority=10)
     shutdown_manager.register_handler("websockets", ws_manager.close_all_sync, priority=20)
-    shutdown_manager.register_handler("gesture_engine", gesture_engine.stop_gestures, priority=30)
-    shutdown_manager.register_handler("virtual_keyboard", virtual_keyboard.stop_keyboard, priority=30)
+    shutdown_manager.register_handler("gesture_engine", _if_loaded("backend.system.gesture_engine", "stop_gestures"), priority=30)
+    shutdown_manager.register_handler("virtual_keyboard", _if_loaded("backend.vision.virtual_keyboard", "stop_keyboard"), priority=30)
     shutdown_manager.register_handler("audio_engine", cleanup_audio_engine, priority=30)
     if island is not None:
         shutdown_manager.register_handler("dynamic_island", island.terminate, priority=30)
@@ -197,7 +203,7 @@ def main():
     # capture). Release the device after gesture has unsubscribed (priority 30) but
     # before state persistence, so the webcam is freed cleanly regardless of which
     # feature opened it.
-    shutdown_manager.register_handler("vision_manager", stop_vision, priority=35)
+    shutdown_manager.register_handler("vision_manager", _if_loaded("backend.vision.vision_manager", "stop_vision"), priority=35)
     shutdown_manager.register_handler("state_persistence", persist_states, priority=40)
 
     # Console typing always works
