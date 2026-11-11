@@ -8,6 +8,7 @@ Owns:
 
 import os
 import re
+import difflib
 import webbrowser
 
 from backend.core import config
