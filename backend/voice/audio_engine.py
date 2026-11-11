@@ -379,7 +379,7 @@ class AudioEngine:
                     break
         audio = sr.AudioData(b"".join(frames), config.SAMPLE_RATE, 2)
         try:
-            return sr.Recognizer().recognize_google(audio).lower()
+            return _recognize(audio)
         except sr.UnknownValueError:
             return None
         except sr.RequestError as e:
