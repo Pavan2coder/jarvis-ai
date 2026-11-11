@@ -68,6 +68,8 @@ class Settings:
         self.SPEECH_THRESHOLD = float(os.environ.get("JARVIS_SPEECH_THRESHOLD", "350"))
         self.CLAP_THRESHOLD = float(os.environ.get("JARVIS_CLAP_THRESHOLD", "3000"))
         
+        # Speech-recognition accent/language, e.g. en-IN, en-US, hi-IN.
+        self.LANGUAGE = os.environ.get("JARVIS_LANGUAGE", "en-IN")
         self.GEMINI_MODEL = os.environ.get("JARVIS_GEMINI_MODEL", "gemini-2.5-flash")
         
         self.GESTURES_ENABLED_ON_BOOT = os.environ.get("JARVIS_GESTURES_ENABLED_ON_BOOT", "False").lower() == "true"
