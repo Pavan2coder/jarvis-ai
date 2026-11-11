@@ -531,6 +531,8 @@ class AudioEngine:
                             pass
                         except Exception:
                             pass
+                else:
+                    pre.append(raw_data)
             except Exception as e:
                 if shutdown_manager.is_shutting_down():
                     break
