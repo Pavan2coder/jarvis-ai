@@ -19,14 +19,29 @@ WAKE_PHRASES = ["jarvis", "hey jarvis", "ok jarvis", "okay jarvis",
 ENGINE = None          # set in boot — the single shared mic owner
 speak_lock = threading.Lock()
 
+_tts = threading.local()   # one SAPI voice per thread (COM objects are thread-bound)
+
+def _voice():
+    """Windows SAPI voice, created once per thread and reused. pyttsx3 had to be
+    rebuilt on every reply (its runAndWait hangs on reuse) which cost ~0.5s each."""
+    v = getattr(_tts, "v", None)
+    if v is None:
+        import comtypes
+        import comtypes.client
+        comtypes.CoInitialize()
+        v = comtypes.client.CreateObject("SAPI.SpVoice")
+        v.Rate = 1   # -10..10; 1 ≈ pyttsx3's old 170 wpm
+        voices = v.GetVoices()
+        for i in range(voices.Count):
+            if any(w in voices.Item(i).GetDescription().lower() for w in ['david', 'mark', 'george', 'male']):
+                v.Voice = voices.Item(i)
+                break
+        _tts.v = v
+    return v
+
 def _make_engine():
     eng = pyttsx3.init()
     eng.setProperty('rate', 170)
-    eng.setProperty('volume', 1.0)
-    for voice in eng.getProperty('voices'):
-        if any(w in voice.name.lower() for w in ['david', 'mark', 'male', 'george']):
-            eng.setProperty('voice', voice.id)
-            break
     return eng
 
 def speak(text):
