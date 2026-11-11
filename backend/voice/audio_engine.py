@@ -169,6 +169,7 @@ class AudioEngine:
         # chunks of silence that mark the end of a phrase (~0.7s)
         self.silence_chunks = max(6, int(0.7 * config.SAMPLE_RATE / config.CHUNK))
         self.start_chunks = max(1, int(config.SAMPLE_RATE / config.CHUNK))   # ~1s to start
+        self.preroll_chunks = max(2, int(0.3 * config.SAMPLE_RATE / config.CHUNK))  # ~0.3s
 
     @property
     def ambient(self):
