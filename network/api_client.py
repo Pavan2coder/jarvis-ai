@@ -109,8 +109,11 @@ class GeminiProvider(LLMProvider):
         self,
         prompt: str,
         history: Optional[List[Dict[str, str]]] = None,
-        system_instruction: Optional[str] = None
-    ) -> str:
+        system_instruction: Optional[str] = None,
+        tools: Optional[List[Dict[str, Any]]] = None,
+    ):
+        """Returns the reply text, or a list of {name, args} when the model
+        chose to call one of `tools` instead of answering."""
         if not self.api_key:
             raise APIException("Gemini API key is not configured.")
 
