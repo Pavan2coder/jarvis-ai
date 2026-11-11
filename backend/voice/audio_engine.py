@@ -49,14 +49,17 @@ def speak(text):
     ui_server.set_ui("speaking", message=text, response=text)
     with speak_lock:
         try:
-            eng = _make_engine()
-            eng.say(text)
-            eng.runAndWait()
-            eng.stop()
-            del eng
-            gc.collect()   # release so the next speak() gets a fresh engine
-        except Exception as e:
-            print(f"  ⚠️  TTS error: {e}")
+            _voice().Speak(text)
+        except Exception:
+            try:   # non-Windows / SAPI unavailable: old per-call pyttsx3 path
+                eng = _make_engine()
+                eng.say(text)
+                eng.runAndWait()
+                eng.stop()
+                del eng
+                gc.collect()
+            except Exception as e:
+                print(f"  ⚠️  TTS error: {e}")
     ui_server.set_ui("idle", message="Standing by...")
 
 def listen(timeout=6, phrase_limit=8):
