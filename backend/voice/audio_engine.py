@@ -488,18 +488,24 @@ class AudioEngine:
                     continue
 
                 # 2) wake word via VAD-captured phrase (Uses noise-reduced cleaned data and volume)
+                # Recognizer gets RAW audio: the per-chunk spectral subtraction
+                # (no overlap/window) adds clicks that hurt Google's accuracy;
+                # the cleaned volume is still used for voice detection.
                 if cleaned_vol > self.activation_threshold:
+                    if not recording:
+                        frames = list(pre)   # keep the first syllable
                     recording = True
-                    frames.append(cleaned_data)
+                    frames.append(raw_data)
                     silent = 0
                 elif recording:
-                    frames.append(cleaned_data)
+                    frames.append(raw_data)
                     silent += 1
                     if silent >= self.silence_chunks or len(frames) > max_phrase:
                         audio = sr.AudioData(b"".join(frames), config.SAMPLE_RATE, 2)
                         frames, recording, silent = [], False, 0
+                        pre.clear()
                         try:
-                            text = sr.Recognizer().recognize_google(audio).lower()
+                            text = _recognize(audio)
                             print(f"  heard: [{text}]")
 
                             # A) wake word present
