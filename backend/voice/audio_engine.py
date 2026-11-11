@@ -2,6 +2,7 @@ import gc
 import time
 import random
 import threading
+from collections import deque
 import numpy as np
 import pyaudio
 import speech_recognition as sr
