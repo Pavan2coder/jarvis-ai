@@ -448,6 +448,7 @@ class AudioEngine:
             print(f"  🎙️   Listening for claps 👏👏 and wake words {WAKE_PHRASES[:4]}...")
         print("  ⌨️   Or press ENTER in this window to type a command (works without a mic).\n")
         frames, recording, silent = [], False, 0
+        pre = deque(maxlen=self.preroll_chunks)
         max_phrase = int(5 * config.SAMPLE_RATE / config.CHUNK)
         while not shutdown_manager.is_shutting_down():
             try:
