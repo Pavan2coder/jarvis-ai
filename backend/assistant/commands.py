@@ -50,6 +50,18 @@ def handle_command(command):
     # 4. Layer C — anything else → the centralized LLM router
     session_memory.set("current_task", "query_llm")
     ui_server.set_ui("thinking", message="Thinking...", command=command)
-    from backend.assistant import llm_router
-    answer = llm_router.ask_llm(command)
-    speak(answer)
+    from backend.assistant.llm_router import router, AGENT_TOOLS
+    answer = router.ask_llm(command, tools=AGENT_TOOLS)
+    if isinstance(answer, str):
+        speak(answer)
+        return
+    # Agent mode: Gemini chose actions. Run them through the plugin layers only
+    # (never back into the LLM, so no loops).
+    for call in answer:
+        for sub in call.get("args", {}).get("commands", []):
+            sub = sub.lower().strip()
+            logger.info(f"Agent command: '{sub}'")
+            r = classify_intent(sub)
+            if not (plugins.dispatch_intent(r["intent"], sub, r["entities"])
+                    or plugins.dispatch_fallback(sub)):
+                speak(f"I couldn't do: {sub}.")
