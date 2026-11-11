@@ -124,26 +124,28 @@ def play_spotify(command) -> bool:
             webbrowser.open(url)
             return True
 
-    # Generic play command
-    if "open spotify" in command or "launch spotify" in command:
+    query = re.sub(r"\s+", " ", _FILLER.sub(" ", command)).strip()
+    if not query or "open spotify" in command or "launch spotify" in command:
         speak("Opening Spotify.")
-        webbrowser.open(config.SPOTIFY_PLAYLISTS["default"])
+        try:
+            os.startfile("spotify:")
+        except OSError:
+            webbrowser.open(config.SPOTIFY_PLAYLISTS["default"])
         return True
 
-    # Search for song/artist
-    search_terms = (command
-        .replace("play", "").replace("spotify", "")
-        .replace("music", "").replace("song", "")
-        .replace("search for", "").strip())
-
-    if search_terms:
-        speak(f"Searching Spotify for {search_terms}.")
-        webbrowser.open(f"https://open.spotify.com/search/{search_terms.replace(' ', '%20')}")
+    # Talk while Spotify loads the results instead of before.
+    talker = threading.Thread(target=speak, args=(f"Playing {query} on Spotify.",))
+    talker.start()
+    try:
+        played = _play_top_result(query)
+    except Exception as e:
+        print(f"  ⚠️  Spotify autoplay failed: {e}")
+        played = False
+    talker.join()
+    if played:
         return True
-
-    # Fallback
-    speak("Opening Spotify.")
-    webbrowser.open(config.SPOTIFY_PLAYLISTS["default"])
+    # No desktop app / UI changed: fall back to showing results in the browser.
+    webbrowser.open(f"https://open.spotify.com/search/{query.replace(' ', '%20')}")
     return True
 
 
