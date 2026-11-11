@@ -295,10 +295,12 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
 
     # Match confidence tuning (if intent remains default query_llm but uses trigger words)
     if intent == "query_llm":
-        if any(w in normalized for w in ["hello", "hi", "hey", "what's up"]):
+        # Whole words only ("hi" is inside "something"), and only short
+        # utterances: "hey what is a black hole" is a question, not a greeting.
+        if re.search(r"\b(hello|hi|hey|what's up)\b", normalized) and len(normalized.split()) <= 4:
             intent = "greeting"
             confidence = 0.95
-        elif any(w in normalized for w in ["goodbye", "bye", "exit", "quit", "shutdown jarvis"]):
+        elif re.search(r"\b(goodbye|bye|exit|quit|shutdown jarvis)\b", normalized):
             intent = "exit"
             confidence = 0.95
 
