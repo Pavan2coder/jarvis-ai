@@ -26,6 +26,24 @@ def _decode(value):
     return str(make_header(decode_header(value or "")))
 
 
+def fetch_unread(limit=5):
+    """Return (unread_count, [(sender, subject), ...newest first]) or None if not configured."""
+    user, pw = os.environ.get("GMAIL_ADDRESS"), os.environ.get("GMAIL_APP_PASSWORD")
+    if not (user and pw):
+        return None
+    with imaplib.IMAP4_SSL("imap.gmail.com", timeout=15) as m:
+        m.login(user, pw.replace(" ", ""))
+        m.select("INBOX", readonly=True)
+        ids = m.search(None, "UNSEEN")[1][0].split()
+        mails = []
+        for i in reversed(ids[-limit:]):
+            raw = m.fetch(i, "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT)])")[1][0][1]
+            msg = email.message_from_bytes(raw)
+            name, addr = parseaddr(_decode(msg["From"]))
+            mails.append((name or addr, _decode(msg["Subject"]) or "no subject"))
+        return len(ids), mails
+
+
 INTENTS = {
 }
 
