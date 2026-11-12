@@ -137,6 +137,19 @@ _EMAIL_WORD = re.compile(r"\b(e-?mails?|mails?|inbox|gmail)\b")
 _EMAIL_ASK = re.compile(r"\b(check|read|any|what|which|new|unread|latest|recent|got|get|updates?)\b")
 
 
+def google_target(normalized: str):
+    """Return (service_word, leftover_name) if this asks to open a Google app, else None."""
+    if not re.match(r"(open|launch|start|show|go to)\b", normalized):
+        return None
+    said_google = re.search(r"\bgoogle\b", normalized)
+    for word in GOOGLE_SERVICES:
+        if re.search(r"\b" + word + r"\b", normalized) and (said_google or word not in GOOGLE_NEEDS_PREFIX):
+            name = re.sub(r"\b(open|launch|start|show|go to|google|my|the|a|in|on|from|file|called|named|please|"
+                          + "|".join(GOOGLE_SERVICES) + r")\b", " ", normalized)
+            return word, re.sub(r"\s+", " ", name).strip()
+    return None
+
+
 def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
     """Computes similarity ratios against a list of aliases and returns the best match."""
     best_match = None
