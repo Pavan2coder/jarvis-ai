@@ -44,6 +44,13 @@ def fetch_unread(limit=5):
         return len(ids), mails
 
 
+def summarize(count, mails):
+    if not count:
+        return "No new emails. Inbox is clear."
+    head = f"You have {count} unread email{'s' if count != 1 else ''}."
+    return head + " " + " ".join(f"From {s}: {subj}." for s, subj in mails)
+
+
 INTENTS = {
 }
 
