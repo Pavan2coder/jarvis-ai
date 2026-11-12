@@ -235,6 +235,10 @@ def classify_intent(raw_text: str) -> Dict[str, Any]:
             entities["action"] = "search_google"
             entities["query"] = clean_query(normalized.split("search google for")[-1])
         
+    # GOOGLE: email readout / open Google apps (before open_app, which would grab "excel")
+    elif _EMAIL_WORD.search(normalized) and _EMAIL_ASK.search(normalized) and not normalized.startswith("open"):
+        intent = "email_updates"
+        confidence = 0.95
     # 2. DIAGNOSTICS INTENT
     elif any(phrase in normalized for phrase in ["cpu", "ram", "gpu", "processor", "memory", "graphics", "system info", "diagnostics"]):
         intent = "diagnostics"
