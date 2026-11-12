@@ -72,6 +72,16 @@ class TestIntentClassifierGestures(unittest.TestCase):
     def test_google_routing(self):
         for cmd in ["check my emails", "what emails did i get", "any new mail", "read my gmail"]:
             self.assertEqual(classify_intent(cmd)["intent"], "email_updates", cmd)
+        r = classify_intent("open excel sheet in google")
+        self.assertEqual((r["intent"], r["entities"]["service"], r["entities"]["name"]), ("google_open", "sheet", ""))
+        r = classify_intent("open google sheets budget 2026")
+        self.assertEqual((r["entities"]["service"], r["entities"]["name"]), ("sheets", "budget 2026"))
+        self.assertEqual(classify_intent("open gmail")["intent"], "google_open")
+        self.assertEqual(classify_intent("open google calendar")["entities"]["service"], "calendar")
+        # desktop apps / folders must not be hijacked
+        self.assertEqual(classify_intent("open excel")["intent"], "open_app")
+        self.assertEqual(classify_intent("open word")["intent"], "open_app")
+        self.assertNotEqual(classify_intent("open documents")["intent"], "google_open")
 
 if __name__ == "__main__":
     unittest.main()
