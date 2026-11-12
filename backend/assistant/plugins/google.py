@@ -67,8 +67,27 @@ def _email_updates(command, entities):
     speak(summarize(*result))
 
 
+def _google_open(command, entities):
+    service, name = entities.get("service", "drive"), entities.get("name", "")
+    url = GOOGLE_SERVICES.get(service, "https://drive.google.com")
+    session_memory.set("last_opened_app", f"google_{service}")
+    if name and "mail.google" in url:
+        speak(f"Searching your Gmail for {name}.")
+        webbrowser.open(f"https://mail.google.com/mail/u/0/#search/{quote(name)}")
+    elif name and "maps" in url:
+        speak(f"Opening {name} on Google Maps.")
+        webbrowser.open(f"https://www.google.com/maps/search/{quote(name)}")
+    elif name and ("docs.google" in url or "drive" in url):
+        speak(f"Finding {name} in your Google Drive.")
+        webbrowser.open(f"https://drive.google.com/drive/search?q={quote(name)}")
+    else:
+        speak(f"Opening Google {service}.")
+        webbrowser.open(url)
+
+
 INTENTS = {
     "email_updates": _email_updates,
+    "google_open": _google_open,
 }
 
 FALLBACKS = []
