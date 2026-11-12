@@ -69,5 +69,9 @@ class TestIntentClassifierGestures(unittest.TestCase):
         self.assertNotEqual(classify_intent("open the erp folder on the desktop")["intent"], "open_app")
         self.assertNotEqual(classify_intent("open erp on desktop")["intent"], "open_app")
 
+    def test_google_routing(self):
+        for cmd in ["check my emails", "what emails did i get", "any new mail", "read my gmail"]:
+            self.assertEqual(classify_intent(cmd)["intent"], "email_updates", cmd)
+
 if __name__ == "__main__":
     unittest.main()
