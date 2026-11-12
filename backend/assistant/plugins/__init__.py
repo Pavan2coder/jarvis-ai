@@ -17,9 +17,9 @@ commands.handle_command classifies the intent, then calls dispatch_intent();
 if unmatched, dispatch_fallback(); if still unmatched, the LLM router.
 """
 
-from backend.assistant.plugins import browser, system, spotify, vision, media
+from backend.assistant.plugins import browser, system, spotify, vision, media, google
 
-_PLUGINS = [browser, system, spotify, vision, media]
+_PLUGINS = [browser, system, spotify, vision, media, google]
 
 # Merge intent maps — fail loud if two plugins claim the same intent.
 _INTENT_MAP = {}
