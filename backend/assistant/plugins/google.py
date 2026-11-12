@@ -91,3 +91,10 @@ INTENTS = {
 }
 
 FALLBACKS = []
+
+
+if __name__ == "__main__":
+    assert summarize(0, []) == "No new emails. Inbox is clear."
+    assert summarize(2, [("Bob", "Hi"), ("Amy", "Exam")]) == "You have 2 unread emails. From Bob: Hi. From Amy: Exam."
+    assert _decode("=?utf-8?q?caf=C3=A9?=") == "café"
+    print("ok")
