@@ -133,6 +133,10 @@ GOOGLE_SERVICES = {
 }
 GOOGLE_NEEDS_PREFIX = {"sheet", "spreadsheet", "excel", "doc", "document", "word", "presentation",
                        "powerpoint", "drive", "meet", "maps", "photos", "keep", "forms", "contacts"}
+_EMAIL_WORD = re.compile(r"\b(e-?mails?|mails?|inbox|gmail)\b")
+_EMAIL_ASK = re.compile(r"\b(check|read|any|what|which|new|unread|latest|recent|got|get|updates?)\b")
+
+
 def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
     """Computes similarity ratios against a list of aliases and returns the best match."""
     best_match = None
