@@ -113,7 +113,7 @@ DISABLE_GESTURE_ALIASES = [
     "top gesture control"  # Common misheard variant
 ]
 
-def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
+# Google web apps: spoken word -> URL. Words in def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
     """Computes similarity ratios against a list of aliases and returns the best match."""
     best_match = None
     best_score = 0.0
