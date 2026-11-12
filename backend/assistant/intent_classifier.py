@@ -113,7 +113,27 @@ DISABLE_GESTURE_ALIASES = [
     "top gesture control"  # Common misheard variant
 ]
 
-# Google web apps: spoken word -> URL. Words in def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
+# Google web apps: spoken word -> URL. Words in GOOGLE_NEEDS_PREFIX only count
+# when "google" is also said ("open excel" stays the desktop app).
+GOOGLE_SERVICES = {
+    "gmail": "https://mail.google.com", "email": "https://mail.google.com",
+    "emails": "https://mail.google.com", "mail": "https://mail.google.com",
+    "inbox": "https://mail.google.com",
+    "sheets": "https://docs.google.com/spreadsheets", "sheet": "https://docs.google.com/spreadsheets",
+    "spreadsheet": "https://docs.google.com/spreadsheets", "excel": "https://docs.google.com/spreadsheets",
+    "docs": "https://docs.google.com/document", "doc": "https://docs.google.com/document",
+    "document": "https://docs.google.com/document", "word": "https://docs.google.com/document",
+    "slides": "https://docs.google.com/presentation", "presentation": "https://docs.google.com/presentation",
+    "powerpoint": "https://docs.google.com/presentation",
+    "drive": "https://drive.google.com", "calendar": "https://calendar.google.com",
+    "meet": "https://meet.google.com", "maps": "https://maps.google.com",
+    "photos": "https://photos.google.com", "keep": "https://keep.google.com",
+    "classroom": "https://classroom.google.com", "forms": "https://docs.google.com/forms",
+    "contacts": "https://contacts.google.com",
+}
+GOOGLE_NEEDS_PREFIX = {"sheet", "spreadsheet", "excel", "doc", "document", "word", "presentation",
+                       "powerpoint", "drive", "meet", "maps", "photos", "keep", "forms", "contacts"}
+def get_best_alias_match(text: str, aliases: list, threshold: float = 0.80) -> tuple:
     """Computes similarity ratios against a list of aliases and returns the best match."""
     best_match = None
     best_score = 0.0
