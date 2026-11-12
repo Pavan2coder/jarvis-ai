@@ -51,7 +51,24 @@ def summarize(count, mails):
     return head + " " + " ".join(f"From {s}: {subj}." for s, subj in mails)
 
 
+def _email_updates(command, entities):
+    session_memory.set("current_task", "email_updates")
+    try:
+        result = fetch_unread()
+    except Exception as e:
+        logger.error(f"Gmail IMAP failed: {e}")
+        speak("I couldn't reach Gmail. Check your app password. Opening your inbox instead.")
+        webbrowser.open("https://mail.google.com")
+        return
+    if result is None:
+        speak("Add GMAIL_ADDRESS and GMAIL_APP_PASSWORD to the .env file so I can read your emails. Opening Gmail for now.")
+        webbrowser.open("https://mail.google.com")
+        return
+    speak(summarize(*result))
+
+
 INTENTS = {
+    "email_updates": _email_updates,
 }
 
 FALLBACKS = []
