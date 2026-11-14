@@ -14,14 +14,14 @@ J.A.R.V.I.S is a futuristic, voice-controlled personal AI assistant for Windows,
 *   🌐 **Cinematic 3D HUD**: Web-based interface built with **React, Vite, Framer Motion, and Three.js / React Three Fiber** on `http://localhost:5050`. Displays real-time Jarvis states (idle, listening, thinking, speaking), command logging, and hardware usage metrics.
 *   💻 **Windows System Operations**:
     *   **App Launcher & Terminate**: Start or close processes (Chrome, VS Code, Notepad, Calculator, Task Manager, etc.).
-    *   **Folder Navigator**: Quick access to default folders (Desktop, Downloads, Documents, Projects) or custom file paths.
+    *   **Folder Navigator**: Quick access to default folders (Desktop, Downloads, Documents, Projects), plus fuzzy-finding named files/folders — *"open the ERP folder on the desktop"* works even with a slightly-off name.
     *   **Volume & Brightness Controls**: Precise master volume adjustment (via `pycaw`) and screen brightness tuning (via `screen-brightness-control`).
     *   **Screenshots**: Captures your screen and saves it straight to the Desktop.
     *   **Live System Diagnostics**: Audio reports of current CPU, RAM, GPU utilization, and Battery status.
     *   **PC Power Management**: Locked screen, sleep mode, and confirmation-guarded system shutdowns or restarts (which can be cancelled mid-countdown).
 *   🖐️ **AI Hand Gesture Control System**: webcam-based input module using OpenCV and MediaPipe for virtual mouse control, scrolling, muting, and Spotify controls.
 *   📧 **Google Integration**: *"Do I have any emails?"* reads your unread Gmail aloud (read-only IMAP). *"Open Google Sheets"*, *"open my resume in Drive"*, *"open maps"* jump straight to Gmail, Docs, Sheets, Slides, Drive, Calendar, Meet, Maps, Photos, Keep, Classroom, Forms or Contacts.
-*   🎵 **Spotify Controller**: Launch Spotify, search for songs/artists, or trigger themed playlists (chill, focus, workout, sleep).
+*   🎵 **Spotify Controller**: *"Play Believer by Imagine Dragons"* finds the song and auto-plays the top result in the desktop app. Also handles media keys (play/pause/next) and themed playlists (chill, focus, workout, sleep).
 *   ⌨️ **Console Fallback**: No mic? No problem. Simply press `ENTER` in the terminal and type commands directly.
 
 ---
