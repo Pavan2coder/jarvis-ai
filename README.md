@@ -137,9 +137,13 @@ jarvis-ai/
 │   │   ├── __init__.py
 │   │   └── config.py          # App paths, playlist URLs, parameters
 │   ├── assistant/             # AI Brain & Command Routers
-│   │   ├── __init__.py
 │   │   ├── brain.py           # Gemini API interface and history
-│   │   └── commands.py        # System trigger matching
+│   │   ├── commands.py        # System trigger matching
+│   │   ├── intent_classifier.py # Intent routing (+ Google service map)
+│   │   └── plugins/           # browser, google, media, spotify, system, vision
+│   ├── vision/                # Camera pipeline, hand tracking, virtual mouse/keyboard
+│   ├── websocket/             # Live HUD socket events
+│   ├── plugins/               # Generic plugin framework (registry, manager)
 │   ├── voice/                 # Sound and speech components
 │   │   ├── __init__.py
 │   │   └── audio_engine.py    # VAD listener and TTS voice engines
@@ -239,6 +243,16 @@ To compile it:
 *   **Speak Directly**: If `ALWAYS_LISTEN` is active, say commands like *"open YouTube"* or *"what is the time"*.
 *   **Double-Clap**: Clap twice within 1.2 seconds to manually wake Jarvis up.
 *   **Press Enter**: Press `ENTER` in the command window to pause recording and type commands directly.
+
+---
+
+## 🧪 Tests
+
+```powershell
+.venv\Scripts\python.exe -m unittest discover -p "test_*.py"
+.venv\Scripts\python.exe -m backend.assistant.plugins.google    # Gmail summary self-check
+.venv\Scripts\python.exe -m backend.assistant.plugins.spotify   # song query self-check
+```
 
 ---
 
