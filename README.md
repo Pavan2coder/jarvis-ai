@@ -85,7 +85,7 @@ graph TD
     Gesture --> OS
 ```
 
-For a detailed breakdown of modules, threading logic, and network flows, see [architecture.md](file:///c:/Users/Rupadevi/Desktop/jarvis%20ai/docs/architecture.md).
+For a detailed breakdown of modules, threading logic, and network flows, see [architecture.md](docs/architecture.md).
 
 ---
 
@@ -184,7 +184,8 @@ jarvis-ai/
 Install the necessary system dependencies. For full functionality, the following packages are required:
 
 ```bash
-pip install numpy PyAudio SpeechRecognition pyttsx3 requests psutil GPUtil pyautogui screen-brightness-control pycaw comtypes opencv-python mediapipe
+py -3.12 -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
 ```
 
 > [!NOTE]  
@@ -217,10 +218,11 @@ To compile it:
 
 ## 🚀 Running Jarvis
 
-1. Open a terminal in the root directory of the project and execute:
-   ```bash
-   python jarvis.py
+1. Open a terminal in the root directory of the project and run it with the project's venv (Python 3.12):
+   ```powershell
+   .venv\Scripts\python.exe jarvis.py
    ```
+   Or double-click `Start_Jarvis.bat`.
 2. The UI server will boot on `http://localhost:5050` and automatically launch the HUD in your default web browser.
 3. Jarvis will calibrate your room's ambient noise levels for 1.5 seconds. Once finished, you will hear a confirmation message: *"Jarvis online. Good to see you, Boss."*
 
@@ -264,4 +266,4 @@ Our short-term and medium-term plans include:
 - Transitioning to offline wake-word engines (like Porcupine) to reduce background CPU cycles.
 - Enhancing integration with Spotify APIs for in-client track queuing.
 
-Check out the full [roadmap.md](file:///c:/Users/Rupadevi/Desktop/jarvis%20ai/docs/roadmap.md) and [changelog.md](file:///c:/Users/Rupadevi/Desktop/jarvis%20ai/docs/changelog.md) for more details.
+Check out the full [roadmap.md](docs/roadmap.md) and [changelog.md](docs/changelog.md) for more details.
