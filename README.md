@@ -9,7 +9,7 @@ J.A.R.V.I.S is a futuristic, voice-controlled personal AI assistant for Windows,
 
 ## 🚀 Key Features
 
-*   🎤 **Voice & Clap Activation**: Wake-word-free voice triggering (always listening for commands), double-clap detection to activate, or classic voice activation ("Hey Jarvis").
+*   🎤 **Voice & Clap Activation**: Wake-word-free voice triggering (always listening for commands), double-clap detection to activate, or classic voice activation ("Hey Jarvis"). A ~0.3s pre-roll buffer keeps the first syllable, recognition is accent-aware (`JARVIS_LANGUAGE`, default `en-IN`), and replies use a cached Windows SAPI voice for fast TTS.
 *   🧠 **Gemini AI Brain**: Dynamic conversation powered by Google Gemini (`gemini-2.5-flash` with automatic fallback models). Remembers recent context for seamless follow-up interactions.
 *   🌐 **Cinematic 3D HUD**: Web-based interface built with **React, Vite, Framer Motion, and Three.js / React Three Fiber** on `http://localhost:5050`. Displays real-time Jarvis states (idle, listening, thinking, speaking), command logging, and hardware usage metrics.
 *   💻 **Windows System Operations**:
@@ -255,12 +255,24 @@ Launch Jarvis with the venv interpreter so the intended Python (3.12) and its de
 
 ---
 
-## ⚙️ Customization (`backend/core/config.py`)
+## ⚙️ Customization
 
-You can edit `backend/core/config.py` to adapt Jarvis to your personal preference:
+Most settings are read from `.env` by `backend/config/settings.py`:
 
-*   `YOUR_NAME`: Changes how Jarvis addresses you (default: `"Boss"`).
-*   `YOUR_CITY`: City location used for weather queries (default: `"Hyderabad"`).
+| Variable | Default | Purpose |
+|---|---|---|
+| `JARVIS_YOUR_NAME` | `Boss` | How Jarvis addresses you |
+| `JARVIS_YOUR_CITY` | `Hyderabad` | City for weather queries |
+| `JARVIS_LANGUAGE` | `en-IN` | Speech recognition language/accent |
+| `JARVIS_GEMINI_MODEL` | `gemini-2.5-flash` | Gemini model |
+| `JARVIS_ALWAYS_LISTEN` | `True` | Listen without a wake word |
+| `JARVIS_WAKE_WORD` | `jarvis` | Wake word when not always listening |
+| `JARVIS_GESTURES_ENABLED_ON_BOOT` | `False` | Start gesture control at boot |
+| `JARVIS_CAMERA_INDEX` | `0` | Webcam for gestures |
+| `JARVIS_OLLAMA_URL` / `JARVIS_OLLAMA_MODEL` | `http://localhost:11434` / `llama3` | Local LLM fallback |
+
+App paths, folders and playlists live in `backend/core/config.py`:
+
 *   `APPS`: Dictionary mapping spoken app names to executable commands.
 *   `FOLDERS`: Paths pointing to your localized system directories.
 *   `SPOTIFY_PLAYLISTS`: Connect your favorite Spotify playlist links for direct access.
