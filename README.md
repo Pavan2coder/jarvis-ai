@@ -20,6 +20,7 @@ J.A.R.V.I.S is a futuristic, voice-controlled personal AI assistant for Windows,
     *   **Live System Diagnostics**: Audio reports of current CPU, RAM, GPU utilization, and Battery status.
     *   **PC Power Management**: Locked screen, sleep mode, and confirmation-guarded system shutdowns or restarts (which can be cancelled mid-countdown).
 *   🖐️ **AI Hand Gesture Control System**: webcam-based input module using OpenCV and MediaPipe for virtual mouse control, scrolling, muting, and Spotify controls.
+*   📧 **Google Integration**: *"Do I have any emails?"* reads your unread Gmail aloud (read-only IMAP). *"Open Google Sheets"*, *"open my resume in Drive"*, *"open maps"* jump straight to Gmail, Docs, Sheets, Slides, Drive, Calendar, Meet, Maps, Photos, Keep, Classroom, Forms or Contacts.
 *   🎵 **Spotify Controller**: Launch Spotify, search for songs/artists, or trigger themed playlists (chill, focus, workout, sleep).
 *   ⌨️ **Console Fallback**: No mic? No problem. Simply press `ENTER` in the terminal and type commands directly.
 
@@ -202,6 +203,14 @@ Jarvis needs a Gemini API key to power its conversational responses.
    ```env
    GEMINI_API_KEY=your_actual_api_key_here
    ```
+
+### 2b. Gmail Readout (Optional)
+To let Jarvis read unread mail, add a Gmail [app password](https://myaccount.google.com/apppasswords) (needs 2-step verification) to `.env`:
+```env
+GMAIL_ADDRESS=you@gmail.com
+GMAIL_APP_PASSWORD=abcd efgh ijkl mnop
+```
+Without these, email questions just open your inbox in the browser.
 
 ### 3. Build the Frontend HUD (Optional but Recommended)
 The project comes with a gorgeous, high-fidelity Three.js HUD dashboard in the `frontend` folder.
