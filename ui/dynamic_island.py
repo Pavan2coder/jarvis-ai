@@ -346,7 +346,7 @@ class Island:
             self.dialog = False
         if name and name.strip():
             self.apps.append(name.strip().lower())
-            save_apps(self.apps)
+            save_json(APPS_FILE, self.apps)
 
     def remove_app(self, name):
         self.apps.remove(name)
