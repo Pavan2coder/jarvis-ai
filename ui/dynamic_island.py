@@ -24,6 +24,7 @@ import tkinter as tk
 from tkinter import font as tkfont, simpledialog
 
 import psutil
+from PIL import Image, ImageEnhance, ImageFilter, ImageGrab, ImageTk
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
