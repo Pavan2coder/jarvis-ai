@@ -522,10 +522,14 @@ class Island:
         self.hit(cx - r, cy - r, cx + r, cy + r, cb)
 
     def draw_media(self, x0, x1, top, now):
-        c = self.c
-        song = self.song or self.last_song
-        round_rect(c, x0 + 28, top + 8, x0 + 92, top + 72, 12, fill=HILITE, outline=HILITE)
-        c.create_text(x0 + 60, top + 40, text=G_MUSIC, font=self.f_title, fill=GREEN if self.song else DIM)
+        c, song, cy, playing = self.c, self.song or self.cur, top + 28, bool(self.song)
+
+        # badge
+        ring = GREEN if playing else DIM
+        c.create_oval(x0 + 30, cy - 26, x0 + 82, cy + 26, fill=BG, outline=ring, width=3)
+        c.create_text(x0 + 56, cy, text=G_BOLT if playing else G_MUSIC, font=self.f_title, fill=ring)
+
+        # title / artist / bars
         if song:
             c.create_text(x0 + 108, top + 28, anchor="w", text=self.fit(song[0], self.f_title, 230),
                           font=self.f_title, fill=FG)
