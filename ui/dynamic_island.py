@@ -221,6 +221,7 @@ class Island:
         self.place_window()
 
         threading.Thread(target=self.poll, daemon=True).start()
+        threading.Thread(target=self.backdrop_loop, daemon=True).start()
         self.tick()
 
     # background data
