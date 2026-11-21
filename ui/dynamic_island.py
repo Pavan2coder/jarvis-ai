@@ -441,7 +441,13 @@ class Island:
         x0 = {"Left": 12, "Right": WIN_W - self.w - 12}.get(self.cfg["position"], (WIN_W - self.w) / 2)
         y0, rad = 6, min(self.h / 2, 28)
         self.pill = (x0, y0, x0 + self.w, y0 + self.h)
-        round_rect(c, x0, y0, x0 + self.w, y0 + self.h, min(self.h / 2, 28), fill=BG, outline=BG)
+        glass = self.cfg["glass"] == "On"
+        if glass and self.backdrop is not None:
+            if self.photo is None or self.photo_src is not self.backdrop:
+                self.photo, self.photo_src = ImageTk.PhotoImage(self.backdrop), self.backdrop
+            c.create_image(0, 0, anchor="nw", image=self.photo)   # physical px, unaffected by scale()
+        round_rect(c, x0 + 1, y0 + 1, x0 + self.w - 1, y0 + self.h - 1, rad,
+                   fill="" if glass else BG, outline=EDGE if glass else BG)
         if self.h < COL_H + 6:
             self.draw_collapsed(x0, y0, now)
         elif self.h > EXP_H - 12:
