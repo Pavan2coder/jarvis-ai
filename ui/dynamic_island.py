@@ -572,6 +572,22 @@ class Island:
             c.create_line(bx0, py, kx, py, fill=BLUE, width=4, capstyle="round")
             round_rect(c, kx - 5, py - 10, kx + 5, py + 10, 5, fill=BLUE, outline=BLUE)
 
+        # synced lyrics
+        c.create_line(x0 + 672, top - 4, x0 + 672, top + 100, fill=HILITE)
+        lx, lw = x0 + 690, x1 - x0 - 710
+        if not song or self.cfg["lyrics"] == "Off":
+            return
+        if not self.lyrics:
+            c.create_text(lx, top + 40, anchor="w", font=self.f_small, fill=DIM,
+                          text="Searching lyrics…" if self.lyrics is None else "No synced lyrics")
+            return
+        i = bisect.bisect_right([t for t, _ in self.lyrics], self.elapsed) - 1
+        for row, j in enumerate(range(i - 1, i + 3)):
+            if 0 <= j < len(self.lyrics):
+                f = self.f_text if j == i else self.f_small
+                c.create_text(lx, top + 4 + row * 24, anchor="w", font=f,
+                              text=self.fit(self.lyrics[j][1] or "♪", f, lw),
+                              fill=self.accent() if j == i else ("#4b5563" if j < i else DIM))
 
     def draw_timer(self, x0, x1, top, now):
         c, cy = self.c, top + 42
