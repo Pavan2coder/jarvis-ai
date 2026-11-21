@@ -382,7 +382,7 @@ class Island:
         if x0 - 4 <= px <= x1 + 4 and y0 - 4 <= py <= y1 + 4:
             self.last_inside = now
             self.hover_since = self.hover_since or now
-            if now - self.hover_since >= HOVER_OPEN:
+            if now - self.hover_since >= HOVER_OPEN[self.cfg["hover"]]:
                 self.expanded = True
         else:
             self.hover_since = None
