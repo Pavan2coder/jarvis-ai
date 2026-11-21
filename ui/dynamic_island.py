@@ -8,6 +8,7 @@ Spawned by backend/main.py on boot (set JARVIS_NO_ISLAND=1 to disable).
 Standalone:  .venv\\Scripts\\python.exe -m ui.dynamic_island
 Self-check:  .venv\\Scripts\\python.exe -m ui.dynamic_island --selftest
 """
+import bisect
 import ctypes
 import json
 import math
