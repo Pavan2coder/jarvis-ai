@@ -147,7 +147,12 @@ def load_json(path, default):
         with open(path, encoding="utf-8") as f:
             return json.load(f)
     except Exception:
-        return list(DEFAULT_APPS)
+        return default
+
+
+def save_json(path, data):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
 
 def save_apps(apps):
