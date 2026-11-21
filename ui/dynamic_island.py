@@ -552,9 +552,26 @@ class Island:
 
         # transport
         play = (lambda: media_key(VK_PLAY)) if self.spotify_running else (lambda: self.launch("spotify"))
-        self.button(x1 - 150, cy, 18, G_PREV, lambda: media_key(VK_PREV))
-        self.button(x1 - 100, cy, 22, G_PAUSE if self.song else G_PLAY, play, filled=True)
-        self.button(x1 - 50, cy, 18, G_NEXT, lambda: media_key(VK_NEXT))
+        self.button(x0 + 490, cy, 15, G_PREV, lambda: media_key(VK_PREV), font=self.f_icon_s)
+        c.create_oval(x0 + 510, cy - 19, x0 + 548, cy + 19, fill=self.accent(), outline="")
+        c.create_text(x0 + 529, cy, text=G_PAUSE if playing else G_PLAY, font=self.f_icon, fill=BG)
+        self.hit(x0 + 510, cy - 19, x0 + 548, cy + 19, play)
+        self.button(x0 + 568, cy, 15, G_NEXT, lambda: media_key(VK_NEXT), font=self.f_icon_s)
+        self.button(x0 + 604, cy, 15, G_STOP, lambda: media_key(VK_STOP), font=self.f_icon_s)
+        self.button(x0 + 640, cy, 15, G_VOL, lambda: media_key(VK_MUTE), font=self.f_icon_s)
+
+        # progress
+        py, bx0, bx1, dur = top + 86, x0 + 76, x0 + 600, self.duration
+        c.create_text(x0 + 30, py, anchor="w", text=fmt_secs(self.elapsed) if song else "--:--",
+                      font=self.f_small, fill=FG)
+        c.create_text(x0 + 650, py, anchor="e", text=f"-{fmt_secs(dur - self.elapsed)}" if dur else "--:--",
+                      font=self.f_small, fill=FG)
+        c.create_line(bx0, py, bx1, py, fill=TRACK, width=4, capstyle="round")
+        if dur:
+            kx = bx0 + (bx1 - bx0) * min(1.0, self.elapsed / dur)
+            c.create_line(bx0, py, kx, py, fill=BLUE, width=4, capstyle="round")
+            round_rect(c, kx - 5, py - 10, kx + 5, py + 10, 5, fill=BLUE, outline=BLUE)
+
 
     def draw_timer(self, x0, x1, top, now):
         c, cy = self.c, top + 42
