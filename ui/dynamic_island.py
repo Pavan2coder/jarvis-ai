@@ -33,6 +33,7 @@ if ROOT not in sys.path:
 STATE_URL = "http://localhost:5050/state"
 APPS_FILE = os.path.join(ROOT, "backend", "config", "island_apps.json")
 DEFAULT_APPS = ["spotify", "explorer", "chrome"]
+SETTINGS_FILE = os.path.join(ROOT, "backend", "config", "island_settings.json")
 
 KEY = "#010203"  # transparent (and click-through) colour key
 BG, FG, DIM, GREEN, HILITE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "#262a33"
