@@ -267,7 +267,7 @@ class Island:
                     self.jarvis = json.load(resp)
             except Exception:
                 self.jarvis = {"status": "offline"}
-            if n % 4 == 0:
+            if n % 2 == 0:
                 try:
                     self.song, self.spotify_running = spotify_now_playing()
                     if self.song:
