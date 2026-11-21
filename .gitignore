@@ -134,3 +134,6 @@ cython_debug/
 # AI Coding Assistants / Local agents
 .claude/
 .gemini/
+
+# per-user dynamic island preferences
+backend/config/island_settings.json
