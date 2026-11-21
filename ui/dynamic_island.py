@@ -142,7 +142,7 @@ def round_rect(c, x0, y0, x1, y1, r, **kw):
     return c.create_polygon(pts, smooth=True, **kw)
 
 
-def load_apps():
+def load_json(path, default):
     try:
         with open(APPS_FILE, encoding="utf-8") as f:
             return list(json.load(f))
