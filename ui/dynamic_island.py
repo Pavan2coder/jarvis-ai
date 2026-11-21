@@ -465,7 +465,9 @@ class Island:
 
     def draw_collapsed(self, x0, y0, now):
         c, x1, cy = self.c, x0 + self.w, y0 + self.h / 2
-        if self.plugged or self.battery is None:
+        if self.cfg["battery"] == "Hide":
+            pass
+        elif self.plugged or self.battery is None:
             c.create_text(x0 + 24, cy, text=G_BOLT, font=self.f_icon, fill=GREEN)
         else:
             low = self.battery <= 20
