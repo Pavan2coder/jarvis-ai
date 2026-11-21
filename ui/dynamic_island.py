@@ -531,10 +531,7 @@ class Island:
 
         # title / artist / bars
         if song:
-            c.create_text(x0 + 108, top + 28, anchor="w", text=self.fit(song[0], self.f_title, 230),
-                          font=self.f_title, fill=FG)
-            c.create_text(x0 + 108, top + 52, anchor="w", text=self.fit(song[1], self.f_small, 230),
-                          font=self.f_small, fill=DIM)
+            title, sub = self.fit(song[0], self.f_title, 180), self.fit(song[1], self.f_small, 150)
         else:
             c.create_text(x0 + 108, top + 28, anchor="w", text="Nothing playing", font=self.f_title, fill=FG)
             c.create_text(x0 + 108, top + 52, anchor="w", font=self.f_small, fill=DIM,
