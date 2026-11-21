@@ -438,7 +438,8 @@ class Island:
         c = self.c
         c.delete("all")
         self.hits = []
-        x0, y0 = (WIN_W - self.w) / 2, 6
+        x0 = {"Left": 12, "Right": WIN_W - self.w - 12}.get(self.cfg["position"], (WIN_W - self.w) / 2)
+        y0, rad = 6, min(self.h / 2, 28)
         self.pill = (x0, y0, x0 + self.w, y0 + self.h)
         round_rect(c, x0, y0, x0 + self.w, y0 + self.h, min(self.h / 2, 28), fill=BG, outline=BG)
         if self.h < COL_H + 6:
