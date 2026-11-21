@@ -39,9 +39,35 @@ BG, FG, DIM, GREEN, HILITE, EDGE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "
 STATUS_COLOR = {"listening": "#38bdf8", "active": "#38bdf8", "thinking": "#f59e0b", "speaking": GREEN}
 APP_COLORS = ["#1db954", "#0ea5e9", "#f97316", "#a855f7", "#ef4444", "#14b8a6", "#eab308"]
 
-WIN_W, WIN_H = 600, 190          # logical px; real window is scaled by DPI
-EXP_W, EXP_H, COL_H = 560, 170, 38
-HOVER_OPEN, HOVER_CLOSE = 0.3, 0.6  # seconds
+WIN_W, WIN_H = 980, 190          # logical px; real window is scaled by DPI
+EXP_W, MEDIA_W, EXP_H, COL_H = 560, 940, 170, 38
+BLUE, TRACK = "#3b82f6", "#3a3f47"
+LYRICS_URL = "https://lrclib.net/api/search?"
+
+# Settings tab: (key, label, options); the first option is the default. Click a chip to cycle.
+ACCENTS = {"Teal": "#5eead4", "Blue": "#60a5fa", "Purple": "#c084fc", "Pink": "#f472b6",
+           "Green": "#4ade80", "Amber": "#fbbf24"}
+SETTINGS = [
+    ("glass", "Glass effect", ["On", "Off"]),
+    ("tint", "Glass tint", ["Medium", "Dark", "Light"]),
+    ("blur", "Glass blur", ["Medium", "High", "Low"]),
+    ("accent", "Accent colour", list(ACCENTS)),
+    ("auto_open", "Pop open on new song", ["8s", "15s", "4s", "Off"]),
+    ("lyrics", "Lyrics", ["On", "Off"]),
+    ("hover", "Hover to open", ["Normal", "Slow", "Instant"]),
+    ("close", "Close after leaving", ["Normal", "Slow", "Fast"]),
+    ("position", "Position", ["Center", "Left", "Right"]),
+    ("clock", "Clock", ["12h", "24h"]),
+    ("battery", "Battery", ["Show", "Hide"]),
+    ("timer_sound", "Timer sound", ["On", "Off"]),
+]
+OPTIONS = {k: opts for k, _, opts in SETTINGS}
+TINT = {"Light": 0.7, "Medium": 0.45, "Dark": 0.25}      # backdrop brightness
+BLUR = {"Low": 2, "Medium": 4, "High": 8}                # gaussian radius at 1/4 scale
+AUTO_OPEN = {"Off": 0, "4s": 4, "8s": 8, "15s": 15}
+HOVER_OPEN = {"Instant": 0.05, "Normal": 0.3, "Slow": 0.8}
+HOVER_CLOSE = {"Fast": 0.2, "Normal": 0.6, "Slow": 2.0}
+WDA_EXCLUDEFROMCAPTURE = 0x11
 
 # Segoe Fluent / MDL2 glyphs
 G_MUSIC, G_TIMER, G_APPS = "", "", ""
