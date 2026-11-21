@@ -492,7 +492,8 @@ class Island:
 
     def draw_expanded(self, x0, y0, now):
         c, x1 = self.c, x0 + self.w
-        tabs = [("media", G_MUSIC, "Now Playing"), ("timer", G_TIMER, "Timer"), ("launch", G_APPS, "Quick Launch")]
+        tabs = [("media", G_MUSIC, "Now Playing"), ("timer", G_TIMER, "Timer"), ("launch", G_APPS, "Quick Launch"),
+                ("settings", G_GEAR, "Island Settings")]
         for i, (key, glyph, _) in enumerate(tabs):
             cx, cy = x0 + 40 + i * 40, y0 + 28
             if key == self.tab:
