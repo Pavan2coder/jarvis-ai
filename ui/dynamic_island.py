@@ -35,8 +35,7 @@ APPS_FILE = os.path.join(ROOT, "backend", "config", "island_apps.json")
 DEFAULT_APPS = ["spotify", "explorer", "chrome"]
 SETTINGS_FILE = os.path.join(ROOT, "backend", "config", "island_settings.json")
 
-KEY = "#010203"  # transparent (and click-through) colour key
-BG, FG, DIM, GREEN, HILITE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "#262a33"
+BG, FG, DIM, GREEN, HILITE, EDGE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "#262a33", "#5a606e"
 STATUS_COLOR = {"listening": "#38bdf8", "active": "#38bdf8", "thinking": "#f59e0b", "speaking": GREEN}
 APP_COLORS = ["#1db954", "#0ea5e9", "#f97316", "#a855f7", "#ef4444", "#14b8a6", "#eab308"]
 
