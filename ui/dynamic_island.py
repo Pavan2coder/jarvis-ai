@@ -224,6 +224,40 @@ class Island:
         threading.Thread(target=self.backdrop_loop, daemon=True).start()
         self.tick()
 
+    # window / settings
+    def place_window(self):
+        sw, W, H = self.root.winfo_screenwidth(), int(WIN_W * self.S), int(WIN_H * self.S)
+        x = {"Left": 0, "Right": sw - W}.get(self.cfg["position"], (sw - W) // 2)
+        self.root.geometry(f"{W}x{H}+{x}+0")
+        self.root.update_idletasks()
+        self.geom = (x, 0, W, H)
+        glass = self.cfg["glass"] == "On"
+        ctypes.windll.user32.SetWindowDisplayAffinity(self.hwnd, WDA_EXCLUDEFROMCAPTURE if glass else 0)
+        self.backdrop = self.photo = None
+
+    def cycle_setting(self, key, step=1):
+        opts = OPTIONS[key]
+        self.cfg[key] = opts[(opts.index(self.cfg[key]) + step) % len(opts)]
+        save_json(SETTINGS_FILE, self.cfg)
+        if key in ("glass", "position", "tint", "blur"):
+            self.place_window()
+
+    def accent(self):
+        return ACCENTS[self.cfg["accent"]]
+
+    def backdrop_loop(self):
+        # ponytail: re-captures at ~3 fps, so video playing behind the island looks a bit laggy in the glass.
+        while True:
+            cfg = self.cfg
+            if cfg["glass"] == "On":
+                x, y, w, h = self.geom
+                try:
+                    shot = ImageGrab.grab((x, y, x + w, y + h), all_screens=True)
+                    self.backdrop = frost(shot, BLUR[cfg["blur"]], TINT[cfg["tint"]])
+                except Exception:
+                    pass
+            time.sleep(0.3)
+
     # background data
     def poll(self):
         n = 0
