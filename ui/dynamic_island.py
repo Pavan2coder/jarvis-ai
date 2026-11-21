@@ -366,7 +366,8 @@ class Island:
                 winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
         self.track_song(now)
         self.update_hover(now)
-        tw, th = (EXP_W, EXP_H) if self.expanded else (self.collapsed_width(now), COL_H)
+        ew = MEDIA_W if self.tab in ("media", "settings") else EXP_W
+        tw, th = (ew, EXP_H) if self.expanded else (self.collapsed_width(now), COL_H)
         self.w += (tw - self.w) * 0.3
         self.h += (th - self.h) * 0.3
         if abs(tw - self.w) < 0.5 and abs(th - self.h) < 0.5:
