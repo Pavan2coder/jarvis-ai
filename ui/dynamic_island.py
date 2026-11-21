@@ -488,7 +488,7 @@ class Island:
     def draw_bars(self, x, cy, now):
         for i in range(3):
             h = 4 + 5 * abs(math.sin(now * 5 + i * 1.3))
-            self.c.create_rectangle(x + i * 5, cy - h, x + i * 5 + 3, cy + h, fill="#5eead4", outline="")
+            self.c.create_rectangle(x + i * 5, cy - h, x + i * 5 + 3, cy + h, fill=self.accent(), outline="")
 
     def draw_expanded(self, x0, y0, now):
         c, x1 = self.c, x0 + self.w
