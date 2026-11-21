@@ -513,7 +513,8 @@ class Island:
         self.hit(px - 15, py - 15, px + 15, py + 15, lambda: setattr(self, "pinned", not self.pinned))
 
         top = y0 + 52
-        {"media": self.draw_media, "timer": self.draw_timer, "launch": self.draw_launch}[self.tab](x0, x1, top, now)
+        {"media": self.draw_media, "timer": self.draw_timer, "launch": self.draw_launch,
+         "settings": self.draw_settings}[self.tab](x0, x1, top, now)
 
     def button(self, cx, cy, r, glyph, cb, filled=False, font=None):
         self.c.create_oval(cx - r, cy - r, cx + r, cy + r, fill=FG if filled else HILITE, outline="")
