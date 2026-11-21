@@ -182,11 +182,8 @@ class Island:
         self.S = r.winfo_fpixels("1i") / 96.0
         r.overrideredirect(True)
         r.attributes("-topmost", True)
-        r.attributes("-transparentcolor", KEY)
-        r.configure(bg=KEY)
-        sw = r.winfo_screenwidth()
-        r.geometry(f"{int(WIN_W * self.S)}x{int(WIN_H * self.S)}+{int((sw - WIN_W * self.S) / 2)}+0")
-        self.c = tk.Canvas(r, bg=KEY, highlightthickness=0)
+        r.configure(bg=BG)
+        self.c = tk.Canvas(r, bg=BG, highlightthickness=0)
         self.c.pack(fill="both", expand=True)
         self.c.bind("<Button-1>", lambda e: self.click(e, 0))
         self.c.bind("<Button-3>", lambda e: self.click(e, 1))
