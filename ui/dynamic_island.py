@@ -213,6 +213,12 @@ class Island:
         self.apps = list(load_json(APPS_FILE, DEFAULT_APPS))
         self.cfg = load_settings(load_json(SETTINGS_FILE, {}))
         self.next_parent_check = 0.0
+        # glass: the window is clipped to the pill shape (region) and painted with a blurred
+        # capture of whatever is behind it; it's excluded from capture so it doesn't grab itself.
+        self.region, self.backdrop, self.photo, self.photo_src = None, None, None, None
+        r.update()   # map first; geometry set before mapping is ignored for this window
+        self.hwnd = int(r.wm_frame(), 16)
+        self.place_window()
 
         threading.Thread(target=self.poll, daemon=True).start()
         self.tick()
