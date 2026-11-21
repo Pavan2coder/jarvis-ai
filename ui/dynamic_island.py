@@ -647,6 +647,9 @@ def _selftest():
     assert parse_spotify_title("A - B - C") == ("B - C", "A")
     assert parse_spotify_title("Spotify Premium") is None
     assert parse_spotify_title("GDI+ Window (Spotify.exe)") is None
+    assert clean_title('Rubaroo (From "Tillu")') == "Rubaroo"
+    assert clean_title("Song - Remastered 2011") == "Song"
+    assert parse_lrc("[01:02.50] hello\n[00:03.00]x\nnoise") == [(62.5, "hello"), (3.0, "x")]
     assert fmt_secs(65) == "01:05" and fmt_secs(3600) == "1:00:00" and fmt_secs(0.2) == "00:01"
     print("selftest ok")
 
