@@ -17,6 +17,7 @@ import re
 import sys
 import threading
 import time
+import urllib.parse
 import urllib.request
 import winsound
 import tkinter as tk
