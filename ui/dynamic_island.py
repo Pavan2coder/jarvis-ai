@@ -74,7 +74,8 @@ G_MUSIC, G_TIMER, G_APPS = "", "", ""
 G_PLAY, G_PAUSE, G_PREV, G_NEXT = "", "", "", ""
 G_PIN, G_UNPIN, G_ADD, G_BOLT, G_CLOCK, G_RESET = "", "", "", "", "", ""
 
-VK_NEXT, VK_PREV, VK_PLAY = 0xB0, 0xB1, 0xB3
+G_STOP, G_VOL, G_GEAR = "", "", ""
+VK_NEXT, VK_PREV, VK_STOP, VK_PLAY, VK_MUTE = 0xB0, 0xB1, 0xB2, 0xB3, 0xAD
 
 
 # ── helpers ────────────────────────────────────────────────────────────────
