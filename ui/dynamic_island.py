@@ -589,6 +589,24 @@ class Island:
                               text=self.fit(self.lyrics[j][1] or "♪", f, lw),
                               fill=self.accent() if j == i else ("#4b5563" if j < i else DIM))
 
+    def draw_settings(self, x0, x1, top, now):
+        # 3 columns x 4 rows of "label  [value]"; left-click cycles forward, right-click back
+        c, col_w = self.c, (self.w - 48) / 3
+        for n, (key, label, _) in enumerate(SETTINGS):
+            lx, cy = x0 + 24 + (n // 4) * col_w, top + 4 + (n % 4) * 27
+            val = self.cfg[key]
+            c.create_text(lx + 6, cy, anchor="w", text=label, font=self.f_small, fill=DIM)
+            cx1 = lx + col_w - 18
+            cx0 = cx1 - max(64, self.f_small.measure(val) / self.S + 26)
+            round_rect(c, cx0, cy - 11, cx1, cy + 11, 11, fill=HILITE, outline=HILITE)
+            if key == "accent":
+                c.create_oval(cx0 + 8, cy - 4, cx0 + 16, cy + 4, fill=self.accent(), outline="")
+            on = val in ("On", "Show") or key == "accent"
+            c.create_text((cx0 + cx1) / 2 + (5 if key == "accent" else 0), cy, text=val, font=self.f_small,
+                          fill=self.accent() if on else FG)
+            self.hit(cx0, cy - 11, cx1, cy + 11, lambda k=key: self.cycle_setting(k))
+            self.hit(cx0, cy - 11, cx1, cy + 11, lambda k=key: self.cycle_setting(k, -1), button=1)
+
     def draw_timer(self, x0, x1, top, now):
         c, cy = self.c, top + 42
         done = now < self.done_until
