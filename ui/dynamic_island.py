@@ -453,6 +453,15 @@ class Island:
         elif self.h > EXP_H - 12:
             self.draw_expanded(x0, y0, now)
         c.scale("all", 0, 0, self.S, self.S)
+        self.clip_to_pill(rad)
+
+    def clip_to_pill(self, rad):
+        x0, y0, x1, y1 = (round(v * self.S) for v in self.pill)
+        if (x0, y0, x1, y1) != self.region:
+            self.region = (x0, y0, x1, y1)
+            d = round(2 * rad * self.S)
+            rgn = ctypes.windll.gdi32.CreateRoundRectRgn(x0, y0, x1 + 1, y1 + 1, d, d)
+            ctypes.windll.user32.SetWindowRgn(self.hwnd, rgn, True)   # window owns rgn now
 
     def draw_collapsed(self, x0, y0, now):
         c, x1, cy = self.c, x0 + self.w, y0 + self.h / 2
