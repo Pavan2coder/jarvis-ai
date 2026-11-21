@@ -350,7 +350,7 @@ class Island:
 
     def remove_app(self, name):
         self.apps.remove(name)
-        save_apps(self.apps)
+        save_json(APPS_FILE, self.apps)
 
     # loop
     def tick(self):
