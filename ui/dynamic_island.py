@@ -640,6 +640,9 @@ class Island:
 
 
 def _selftest():
+    cfg = load_settings({"glass": "Off", "accent": "Neon", "bogus": 1})
+    assert cfg["glass"] == "Off" and cfg["accent"] == "Teal" and "bogus" not in cfg
+    assert frost(Image.new("RGB", (40, 20), "white"), 2, 0.5).getpixel((20, 10))[0] in range(120, 135)
     assert parse_spotify_title("Arijit Singh - Channa Mereya") == ("Channa Mereya", "Arijit Singh")
     assert parse_spotify_title("A - B - C") == ("B - C", "A")
     assert parse_spotify_title("Spotify Premium") is None
