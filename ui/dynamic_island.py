@@ -533,10 +533,24 @@ class Island:
         if song:
             title, sub = self.fit(song[0], self.f_title, 180), self.fit(song[1], self.f_small, 150)
         else:
-            c.create_text(x0 + 108, top + 28, anchor="w", text="Nothing playing", font=self.f_title, fill=FG)
-            c.create_text(x0 + 108, top + 52, anchor="w", font=self.f_small, fill=DIM,
-                          text="Spotify is paused" if self.spotify_running else "Click play to open Spotify")
-        cy = top + 40
+            title = "Nothing playing"
+            sub = "Spotify is paused" if self.spotify_running else "Click play to open Spotify"
+        c.create_text(x0 + 96, cy - 11, anchor="w", text=title, font=self.f_title, fill=FG)
+        c.create_text(x0 + 96, cy + 13, anchor="w", text=sub, font=self.f_small, fill=DIM)
+        if playing:
+            self.draw_bars(x0 + 106 + self.f_small.measure(sub) / self.S, cy + 13, now)
+
+        # source pill + quick-launch apps
+        round_rect(c, x0 + 294, cy - 15, x0 + 358, cy + 15, 15, fill=HILITE, outline=HILITE)
+        c.create_text(x0 + 326, cy, text="Spotify", font=self.f_small, fill=FG)
+        self.hit(x0 + 294, cy - 15, x0 + 358, cy + 15, lambda: self.launch("spotify"))
+        for i, name in enumerate(self.apps[:3]):
+            ax, col = x0 + 382 + i * 34, APP_COLORS[sum(map(ord, name)) % len(APP_COLORS)]
+            c.create_oval(ax - 14, cy - 14, ax + 14, cy + 14, fill=col, outline="")
+            c.create_text(ax, cy, text=name[:1].upper(), font=self.f_small, fill=FG)
+            self.hit(ax - 14, cy - 14, ax + 14, cy + 14, lambda n=name: self.launch(n))
+
+        # transport
         play = (lambda: media_key(VK_PLAY)) if self.spotify_running else (lambda: self.launch("spotify"))
         self.button(x1 - 150, cy, 18, G_PREV, lambda: media_key(VK_PREV))
         self.button(x1 - 100, cy, 22, G_PAUSE if self.song else G_PLAY, play, filled=True)
