@@ -155,9 +155,19 @@ def save_json(path, data):
         json.dump(data, f, indent=2)
 
 
-def save_apps(apps):
-    with open(APPS_FILE, "w", encoding="utf-8") as f:
-        json.dump(apps, f, indent=2)
+def load_settings(saved):
+    """Defaults, overridden by any saved value that's still a valid option."""
+    cfg = {k: opts[0] for k, opts in OPTIONS.items()}
+    cfg.update({k: v for k, v in saved.items() if v in OPTIONS.get(k, ())})
+    return cfg
+
+
+def frost(img, blur, tint):
+    """Frosted-glass backdrop: downscale, blur, darken, upscale (cheap big-radius blur)."""
+    w, h = img.size
+    small = img.convert("RGB").resize((max(1, w // 4), max(1, h // 4)), Image.BILINEAR)
+    small = ImageEnhance.Brightness(small.filter(ImageFilter.GaussianBlur(blur))).enhance(tint)
+    return small.resize((w, h), Image.BILINEAR)
 
 
 # ── island ─────────────────────────────────────────────────────────────────
