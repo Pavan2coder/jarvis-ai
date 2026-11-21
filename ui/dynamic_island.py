@@ -427,7 +427,7 @@ class Island:
             return fmt_secs(self.remaining(now))
         if self.song:
             return self.song[0]
-        return time.strftime("%I:%M %p").lstrip("0")
+        return time.strftime("%H:%M") if self.cfg["clock"] == "24h" else time.strftime("%I:%M %p").lstrip("0")
 
     def collapsed_width(self, now):
         text = self.fit(self.collapsed_text(now), self.f_text, 320)
