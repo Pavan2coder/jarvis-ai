@@ -210,7 +210,8 @@ class Island:
         self.hover_since, self.last_inside = None, 0.0
         # timer
         self.t_left, self.t_end, self.done_until = 0.0, None, 0.0
-        self.apps = load_apps()
+        self.apps = list(load_json(APPS_FILE, DEFAULT_APPS))
+        self.cfg = load_settings(load_json(SETTINGS_FILE, {}))
         self.next_parent_check = 0.0
 
         threading.Thread(target=self.poll, daemon=True).start()
