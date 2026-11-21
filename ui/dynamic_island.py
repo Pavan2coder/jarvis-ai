@@ -198,7 +198,10 @@ class Island:
         self.f_icon_s = tkfont.Font(family=icon, size=10)
 
         # live data (written by poll thread)
-        self.jarvis, self.song, self.last_song, self.spotify_running = {}, None, None, False
+        self.jarvis, self.song, self.spotify_running = {}, None, False
+        # current track; elapsed is counted locally while Spotify's title says it's playing
+        self.cur, self.elapsed, self.duration, self.lyrics = None, 0.0, 0, None
+        self.auto_until, self.last_tick = 0.0, time.time()
         self.plugged, self.battery = False, None
         # ui state
         self.w, self.h = 240.0, float(COL_H)
