@@ -109,6 +109,21 @@ def spotify_now_playing():
     return next((s for s in map(parse_spotify_title, titles) if s), None), True
 
 
+def clean_title(song):
+    """'Rubaroo (From "X")' -> 'Rubaroo'; lyric search chokes on the decorations."""
+    return re.sub(r"\s*[\(\[].*?[\)\]]", "", song).split(" - ")[0].strip() or song
+
+
+def parse_lrc(text):
+    """'[01:02.50] line' -> [(62.5, 'line'), ...]"""
+    out = []
+    for line in text.splitlines():
+        m = re.match(r"\[(\d+):(\d+(?:\.\d+)?)\](.*)", line)
+        if m:
+            out.append((int(m[1]) * 60 + float(m[2]), m[3].strip()))
+    return out
+
+
 def media_key(vk):
     u = ctypes.windll.user32
     u.keybd_event(vk, 0, 1, 0)      # KEYEVENTF_EXTENDEDKEY
