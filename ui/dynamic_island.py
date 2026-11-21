@@ -270,8 +270,6 @@ class Island:
             if n % 2 == 0:
                 try:
                     self.song, self.spotify_running = spotify_now_playing()
-                    if self.song:
-                        self.last_song = self.song
                 except Exception:
                     self.song = None
             if n % 20 == 0:
