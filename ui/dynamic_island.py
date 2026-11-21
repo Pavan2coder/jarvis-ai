@@ -362,7 +362,9 @@ class Island:
                 return
         if self.t_end and now >= self.t_end:
             self.t_left, self.t_end, self.done_until = 0.0, None, now + 6
-            winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
+            if self.cfg["timer_sound"] == "On":
+                winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
+        self.track_song(now)
         self.update_hover(now)
         tw, th = (EXP_W, EXP_H) if self.expanded else (self.collapsed_width(now), COL_H)
         self.w += (tw - self.w) * 0.3
