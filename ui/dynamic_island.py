@@ -144,8 +144,8 @@ def round_rect(c, x0, y0, x1, y1, r, **kw):
 
 def load_json(path, default):
     try:
-        with open(APPS_FILE, encoding="utf-8") as f:
-            return list(json.load(f))
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
     except Exception:
         return list(DEFAULT_APPS)
 
