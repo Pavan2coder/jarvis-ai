@@ -386,7 +386,10 @@ class Island:
                 self.expanded = True
         else:
             self.hover_since = None
-            if self.expanded and not (self.pinned or self.dialog) and now - self.last_inside > HOVER_CLOSE:
+            if now < self.auto_until:
+                self.expanded = True
+            elif self.expanded and not (self.pinned or self.dialog) and \
+                    now - self.last_inside > HOVER_CLOSE[self.cfg["close"]]:
                 self.expanded = False
 
     def click(self, e, button):
