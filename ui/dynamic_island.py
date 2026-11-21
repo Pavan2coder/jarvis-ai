@@ -278,6 +278,40 @@ class Island:
             n += 1
             time.sleep(0.5)
 
+    # now playing
+    def track_song(self, now):
+        # ponytail: position is estimated from when the title first appeared, so a song already
+        # mid-play at startup reads from 0. Use winrt GlobalSystemMediaTransportControls if that matters.
+        dt, self.last_tick = now - self.last_tick, now
+        if not self.song:
+            return
+        if self.song != self.cur:
+            self.cur, self.elapsed, self.duration, self.lyrics = self.song, 0.0, 0, None
+            self.auto_until = now + AUTO_OPEN[self.cfg["auto_open"]]
+            if self.auto_until > now:
+                self.tab = "media"
+            threading.Thread(target=self.fetch_lyrics, args=(self.song,), daemon=True).start()
+        else:
+            self.elapsed += dt
+
+    def fetch_lyrics(self, song):
+        title, artist = clean_title(song[0]), song[1].split(",")[0].strip()
+        hits = []
+        for q in ({"track_name": title, "artist_name": artist}, {"q": title}):
+            try:
+                req = urllib.request.Request(LYRICS_URL + urllib.parse.urlencode(q),
+                                             headers={"User-Agent": "jarvis-island"})
+                with urllib.request.urlopen(req, timeout=6) as resp:
+                    hits = json.load(resp)
+            except Exception:
+                hits = []
+            if hits:
+                break
+        hit = next((h for h in hits if h.get("syncedLyrics")), hits[0] if hits else {})
+        if self.cur == song:
+            self.duration = hit.get("duration") or 0
+            self.lyrics = parse_lrc(hit.get("syncedLyrics") or "")
+
     # timer
     def remaining(self, now):
         return max(0.0, self.t_end - now) if self.t_end else self.t_left
