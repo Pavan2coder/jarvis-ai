@@ -470,6 +470,7 @@ class AudioEngine:
         frames, recording, silent = [], False, 0
         pre = deque(maxlen=self.preroll_chunks)
         max_phrase = int(10 * config.SAMPLE_RATE / config.CHUNK)
+        last_sound, mic_dead = time.time(), False
         while not shutdown_manager.is_shutting_down():
             try:
                 # Flush the mic buffer when the worker signals it (echo suppression
@@ -484,6 +485,16 @@ class AudioEngine:
                     continue
                 raw_data, cleaned_data, vol, peak, cleaned_vol, cleaned_peak = self._read()
 
+                # A live mic always has some hiss; peak <= 2 for seconds = digital zero = muted
+                # (laptop mic-mute key, privacy toggle). Say so instead of silently ignoring the user.
+                if peak > 2:
+                    last_sound = time.time()
+                    if mic_dead:
+                        mic_dead = False
+                        print("  🎤  Mic is back.")
+                elif not mic_dead and time.time() - last_sound > 4:
+                    mic_dead = True
+                    print("  🔇  Mic is sending pure silence — is it MUTED? (mic-mute key / Windows sound settings)")
 
                 # Dynamic Ambient Noise Floor Tracking & Hysteresis VAD Adjustments
                 # Only update background ambient estimates during quiet, non-triggering times
