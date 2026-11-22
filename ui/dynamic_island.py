@@ -24,7 +24,7 @@ import tkinter as tk
 from tkinter import font as tkfont, simpledialog
 
 import psutil
-from PIL import Image, ImageEnhance, ImageFilter, ImageGrab, ImageTk
+from PIL import Image, ImageChops, ImageColor, ImageDraw, ImageEnhance, ImageFilter, ImageGrab, ImageTk
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if ROOT not in sys.path:
@@ -174,6 +174,80 @@ def frost(img, blur, tint):
     small = img.convert("RGB").resize((max(1, w // 4), max(1, h // 4)), Image.BILINEAR)
     small = ImageEnhance.Brightness(small.filter(ImageFilter.GaussianBlur(blur))).enhance(tint)
     return ImageEnhance.Color(small).enhance(1.4).resize((w, h), Image.BILINEAR)
+
+
+
+def rgba(col, a=255):
+    return col if isinstance(col, tuple) else ImageColor.getrgb(col)[:3] + (a,)
+
+
+def put(dst, im, x, y):
+    """alpha_composite that tolerates negative offsets."""
+    x, y = int(x), int(y)
+    dst.alpha_composite(im.crop((max(0, -x), max(0, -y), im.width, im.height)), (max(0, x), max(0, y)))
+
+
+PANEL_STYLE = {"glass": ((255, 255, 255, 22), (255, 255, 255, 60)),
+               "hi": ((255, 255, 255, 40), (255, 255, 255, 90))}
+
+
+RAMP = Image.linear_gradient("L")      # 0 at top -> 255 at bottom
+HRAMP = RAMP.rotate(90)                # 0 at left -> 255 at right
+SCRIM = RAMP.point(lambda v: 70)
+SHEEN = RAMP.point(lambda v: max(0, 26 - v * 26 // 90))
+RIM_FADE = RAMP.point(lambda v: 160 - v * 110 // 255)
+
+
+def aa_round(w, h, r, width=0):
+    """Anti-aliased rounded-rect mask (filled, or an outline of `width`): drawn at 2x, box-downsampled."""
+    m = Image.new("L", (2 * w, 2 * h))
+    ImageDraw.Draw(m).rounded_rectangle((0, 0, 2 * w - 1, 2 * h - 1), 2 * r,
+                                        fill=None if width else 255, outline=255 if width else None, width=2 * width)
+    return m.reduce(2)
+
+
+def layer(w, h, rgb, alpha):
+    im = Image.new("RGBA", (w, h), rgb)
+    im.putalpha(alpha if alpha.size == (w, h) else alpha.resize((w, h)))
+    return im
+
+
+def glass_image(base, pill, rad, S, panels, accent):
+    """Glass chrome over the pill's crop of the backdrop: dark scrim (keeps text readable), accent wash,
+    top sheen, panels and a top-lit rim. Only edges are supersampled; flat fills are drawn at 1x.
+    panels: (style, (x0, y0, x1, y1), radius, colour, colour2, glow) in logical px.
+    Returns the pill-sized image; it belongs at (pill[0] * S, pill[1] * S) rounded down."""
+    X0, Y0 = int(pill[0] * S), int(pill[1] * S)
+    w, h = max(1, math.ceil(pill[2] * S) - X0), max(1, math.ceil(pill[3] * S) - Y0)
+    lw = max(1, round(S))
+    out = base.crop((X0, Y0, X0 + w, Y0 + h)).convert("RGBA")
+    out.alpha_composite(layer(w, h, (0, 0, 0), SCRIM))
+    out.alpha_composite(layer(w, h, rgba(accent)[:3], HRAMP.point(lambda v: v * 40 // 255)))
+    out.alpha_composite(layer(w, h, (255, 255, 255), SHEEN))
+
+    for style, box, r, col, col2, glow in panels:
+        px, py = box[0] * S - X0, box[1] * S - Y0
+        bw, bh, rr = max(1, round((box[2] - box[0]) * S)), max(1, round((box[3] - box[1]) * S)), r * S
+        if glow:
+            g = round(9 * S)
+            patch = Image.new("RGBA", (bw + 2 * g, bh + 2 * g), rgba(glow, 0))
+            ImageDraw.Draw(patch).rounded_rectangle((g, g, g + bw, g + bh), rr, fill=rgba(glow, 120))
+            put(out, patch.filter(ImageFilter.GaussianBlur(g / 2.5)), px - g, py - g)
+        mask = aa_round(bw, bh, rr)
+        if style == "grad":
+            im = Image.composite(Image.new("RGBA", (bw, bh), rgba(col2)), Image.new("RGBA", (bw, bh), rgba(col)),
+                                 HRAMP.resize((bw, bh)))
+            im.putalpha(mask)
+        else:
+            fill, edge = PANEL_STYLE[style] if style in PANEL_STYLE else (rgba(col), None)
+            im = layer(bw, bh, fill[:3], mask.point(lambda v, a=fill[3]: v * a // 255))
+            if edge:
+                im.alpha_composite(layer(bw, bh, edge[:3], aa_round(bw, bh, rr, lw).point(lambda v: v * edge[3] // 255)))
+        put(out, im, px, py)
+
+    rim = aa_round(w, h, rad * S, lw + 1)
+    out.alpha_composite(layer(w, h, (255, 255, 255), ImageChops.multiply(rim, RIM_FADE.resize((w, h)))))
+    return out
 
 
 # ── island ─────────────────────────────────────────────────────────────────
