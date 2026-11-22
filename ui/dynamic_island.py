@@ -801,6 +801,9 @@ def _selftest():
     assert g.size == (180, 40)
     assert g.getpixel((90, 20))[0] < 230                       # scrim darkens inside
     assert g.getpixel((40, 20))[:3] == (255, 0, 0)             # solid panel drawn
+    g = glass_image(Image.new("RGB", (200, 60)), (10, 10, 190, 50), 20, 1.0,
+                    [("img", (40, 15, 70, 45), 6, Image.new("RGB", (8, 8), (0, 200, 0)), None, None)], "#5eead4")
+    assert g.getpixel((45, 20))[:3] == (0, 200, 0)             # album art drawn
     x, v, t = 38.0, 0.0, 0.0
     while t < 0.6:                                             # spring: reaches target, no overshoot
         x, v = spring(x, v, 170.0, 1 / 60)
