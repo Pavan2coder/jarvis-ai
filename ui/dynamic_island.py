@@ -36,6 +36,7 @@ DEFAULT_APPS = ["spotify", "explorer", "chrome"]
 SETTINGS_FILE = os.path.join(ROOT, "backend", "config", "island_settings.json")
 
 BG, FG, DIM, GREEN, HILITE, EDGE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "#262a33", "#5a606e"
+SOFT = "#d4d8e0"          # secondary text; DIM is too faint on glass
 STATUS_COLOR = {"listening": "#38bdf8", "active": "#38bdf8", "thinking": "#f59e0b", "speaking": GREEN}
 APP_COLORS = ["#1db954", "#0ea5e9", "#f97316", "#a855f7", "#ef4444", "#14b8a6", "#eab308"]
 
@@ -142,6 +143,11 @@ def round_rect(c, x0, y0, x1, y1, r, **kw):
     return c.create_polygon(pts, smooth=True, **kw)
 
 
+def spaced(text):
+    """Letter-spaced caps label (Tk has no tracking, so hair spaces)."""
+    return " ".join(text.upper())
+
+
 def load_json(path, default):
     try:
         with open(path, encoding="utf-8") as f:
@@ -163,11 +169,11 @@ def load_settings(saved):
 
 
 def frost(img, blur, tint):
-    """Frosted-glass backdrop: downscale, blur, darken, upscale (cheap big-radius blur)."""
+    """Frosted-glass backdrop: downscale, blur, darken, boost colour, upscale (cheap big-radius blur)."""
     w, h = img.size
     small = img.convert("RGB").resize((max(1, w // 4), max(1, h // 4)), Image.BILINEAR)
     small = ImageEnhance.Brightness(small.filter(ImageFilter.GaussianBlur(blur))).enhance(tint)
-    return small.resize((w, h), Image.BILINEAR)
+    return ImageEnhance.Color(small).enhance(1.4).resize((w, h), Image.BILINEAR)
 
 
 # ── island ─────────────────────────────────────────────────────────────────
