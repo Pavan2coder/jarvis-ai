@@ -170,6 +170,15 @@ def frost(img, blur, tint):
     return ImageEnhance.Color(small).enhance(1.4).resize((w, h), Image.BILINEAR)
 
 
+SPRING_K = 220.0   # stiffness: higher = snappier open/close (~0.45s settle at 220)
+
+
+def spring(x, v, target, dt):
+    """Critically damped spring step (semi-implicit Euler): eases in and out, never overshoots."""
+    v += (SPRING_K * (target - x) - 2 * math.sqrt(SPRING_K) * v) * dt
+    return x + v * dt, v
+
+
 def rgba(col, a=255):
     return col if isinstance(col, tuple) else ImageColor.getrgb(col)[:3] + (a,)
 
@@ -280,6 +289,8 @@ class Island:
         self.plugged, self.battery = False, None
         # ui state
         self.w, self.h = 240.0, float(COL_H)
+        self.vw = self.vh = 0.0
+        self.last_frame = time.time()
         self.expanded = self.pinned = self.dialog = False
         self.tab, self.hits, self.pill = "media", [], (0, 0, 0, 0)
         self.hover_since, self.last_inside = None, 0.0
@@ -445,12 +456,15 @@ class Island:
         self.update_hover(now)
         ew = MEDIA_W if self.tab in ("media", "settings") else EXP_W
         tw, th = (ew, EXP_H) if self.expanded else (self.collapsed_width(now), COL_H)
-        self.w += (tw - self.w) * 0.3
-        self.h += (th - self.h) * 0.3
-        if abs(tw - self.w) < 0.5 and abs(th - self.h) < 0.5:
-            self.w, self.h = tw, th
+        dt = min(now - self.last_frame, 0.05)   # real frame time; clamp so a stall doesn't teleport
+        self.last_frame = now
+        self.w, self.vw = spring(self.w, self.vw, tw, dt)
+        self.h, self.vh = spring(self.h, self.vh, th, dt)
+        settled = abs(tw - self.w) < 0.3 and abs(th - self.h) < 0.3 and abs(self.vw) + abs(self.vh) < 5
+        if settled:
+            self.w, self.h, self.vw, self.vh = tw, th, 0.0, 0.0
         self.draw(now)
-        self.root.after(33, self.tick)
+        self.root.after(33 if settled else 15, self.tick)   # 60fps while moving, 30fps idle
 
     def update_hover(self, now):
         px = (self.root.winfo_pointerx() - self.root.winfo_rootx()) / self.S
