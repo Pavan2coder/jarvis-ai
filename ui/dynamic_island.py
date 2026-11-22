@@ -35,14 +35,14 @@ APPS_FILE = os.path.join(ROOT, "backend", "config", "island_apps.json")
 DEFAULT_APPS = ["spotify", "explorer", "chrome"]
 SETTINGS_FILE = os.path.join(ROOT, "backend", "config", "island_settings.json")
 
-BG, FG, DIM, GREEN, HILITE, EDGE = "#000000", "#ffffff", "#8a8f98", "#22c55e", "#262a33", "#5a606e"
+BG, FG, DIM, GREEN = "#000000", "#ffffff", "#8a8f98", "#22c55e"
 SOFT = "#d4d8e0"          # secondary text; DIM is too faint on glass
 STATUS_COLOR = {"listening": "#38bdf8", "active": "#38bdf8", "thinking": "#f59e0b", "speaking": GREEN}
 APP_COLORS = ["#1db954", "#0ea5e9", "#f97316", "#a855f7", "#ef4444", "#14b8a6", "#eab308"]
 
 WIN_W, WIN_H = 980, 190          # logical px; real window is scaled by DPI
 EXP_W, MEDIA_W, EXP_H, COL_H = 560, 940, 170, 38
-BLUE, TRACK = "#3b82f6", "#3a3f47"
+BLUE = "#3b82f6"
 LYRICS_URL = "https://lrclib.net/api/search?"
 
 # Settings tab: (key, label, options); the first option is the default. Click a chip to cycle.
@@ -137,15 +137,9 @@ def fmt_secs(s):
     return f"{h}:{m:02d}:{sec:02d}" if h else f"{m:02d}:{sec:02d}"
 
 
-def round_rect(c, x0, y0, x1, y1, r, **kw):
-    pts = [x0 + r, y0, x1 - r, y0, x1, y0, x1, y0 + r, x1, y1 - r, x1, y1,
-           x1 - r, y1, x0 + r, y1, x0, y1, x0, y1 - r, x0, y0 + r, x0, y0]
-    return c.create_polygon(pts, smooth=True, **kw)
-
-
 def spaced(text):
     """Letter-spaced caps label (Tk has no tracking, so hair spaces)."""
-    return " ".join(text.upper())
+    return " ".join(text.upper())
 
 
 def load_json(path, default):
@@ -174,7 +168,6 @@ def frost(img, blur, tint):
     small = img.convert("RGB").resize((max(1, w // 4), max(1, h // 4)), Image.BILINEAR)
     small = ImageEnhance.Brightness(small.filter(ImageFilter.GaussianBlur(blur))).enhance(tint)
     return ImageEnhance.Color(small).enhance(1.4).resize((w, h), Image.BILINEAR)
-
 
 
 def rgba(col, a=255):
@@ -272,8 +265,10 @@ class Island:
         icon = next((f for f in ("Segoe Fluent Icons", "Segoe MDL2 Assets") if f in fams), "Segoe UI Symbol")
         self.f_text = tkfont.Font(family="Segoe UI", size=11, weight="bold")
         self.f_small = tkfont.Font(family="Segoe UI", size=9)
-        self.f_title = tkfont.Font(family="Segoe UI", size=12, weight="bold")
+        self.f_title = tkfont.Font(family="Segoe UI Semibold", size=14, weight="bold")
+        self.f_label = tkfont.Font(family="Segoe UI", size=8, weight="bold")
         self.f_big = tkfont.Font(family="Segoe UI", size=30, weight="bold")
+        self.f_cover = tkfont.Font(family=icon, size=30)
         self.f_icon = tkfont.Font(family=icon, size=12)
         self.f_icon_s = tkfont.Font(family=icon, size=10)
 
@@ -295,7 +290,8 @@ class Island:
         self.next_parent_check = 0.0
         # glass: the window is clipped to the pill shape (region) and painted with a blurred
         # capture of whatever is behind it; it's excluded from capture so it doesn't grab itself.
-        self.region, self.backdrop, self.photo, self.photo_src = None, None, None, None
+        self.region, self.backdrop, self.photo, self.photo_src, self.photo_key = None, None, None, None, None
+        self.panels = []
         r.update()   # map first; geometry set before mapping is ignored for this window
         self.hwnd = int(r.wm_frame(), 16)
         self.place_window()
@@ -314,6 +310,7 @@ class Island:
         glass = self.cfg["glass"] == "On"
         ctypes.windll.user32.SetWindowDisplayAffinity(self.hwnd, WDA_EXCLUDEFROMCAPTURE if glass else 0)
         self.backdrop = self.photo = None
+        self.solid = Image.new("RGB", (W, H), "#0b0d12")   # base when glass is off
 
     def cycle_setting(self, key, step=1):
         opts = OPTIONS[key]
@@ -514,26 +511,41 @@ class Island:
         return min(460, max(240, self.f_text.measure(text) / self.S + 120))
 
     # drawing
+    def text(self, x, y, shadow=True, **kw):
+        """Text with a 1px dark drop shadow so it stays readable on bright glass."""
+        if shadow:
+            self.c.create_text(x + 1, y + 1, **{**kw, "fill": "#000000"})
+        return self.c.create_text(x, y, **kw)
+
+    def panel(self, x0, y0, x1, y1, r, style="glass", col=None, col2=None, glow=None):
+        """Queue an anti-aliased surface; painted into the glass image under all canvas items."""
+        self.panels.append((style, (round(x0, 1), round(y0, 1), round(x1, 1), round(y1, 1)), r, col, col2, glow))
+
     def draw(self, now):
         c = self.c
         c.delete("all")
-        self.hits = []
+        self.hits, self.panels = [], []
         x0 = {"Left": 12, "Right": WIN_W - self.w - 12}.get(self.cfg["position"], (WIN_W - self.w) / 2)
         y0, rad = 6, min(self.h / 2, 28)
         self.pill = (x0, y0, x0 + self.w, y0 + self.h)
-        glass = self.cfg["glass"] == "On"
-        if glass and self.backdrop is not None:
-            if self.photo is None or self.photo_src is not self.backdrop:
-                self.photo, self.photo_src = ImageTk.PhotoImage(self.backdrop), self.backdrop
-            c.create_image(0, 0, anchor="nw", image=self.photo)   # physical px, unaffected by scale()
-        round_rect(c, x0 + 1, y0 + 1, x0 + self.w - 1, y0 + self.h - 1, rad,
-                   fill="" if glass else BG, outline=EDGE if glass else BG)
+        img = c.create_image(int(x0 * self.S) / self.S, int(y0 * self.S) / self.S, anchor="nw")
         if self.h < COL_H + 6:
             self.draw_collapsed(x0, y0, now)
         elif self.h > EXP_H - 12:
             self.draw_expanded(x0, y0, now)
+        self.paint_glass(img, rad)
         c.scale("all", 0, 0, self.S, self.S)
         self.clip_to_pill(rad)
+
+    def paint_glass(self, item, rad):
+        base = self.backdrop if self.cfg["glass"] == "On" and self.backdrop is not None else self.solid
+        # ponytail: a full recompose is ~40ms, so open/close animation runs ~20fps. Cache the static
+        # chrome separately from moving bits (knob) if that ever feels choppy.
+        key = (self.pill, rad, tuple(self.panels), self.accent())
+        if base is not self.photo_src or key != self.photo_key:
+            self.photo = ImageTk.PhotoImage(glass_image(base, self.pill, rad, self.S, self.panels, self.accent()))
+            self.photo_src, self.photo_key = base, key
+        self.c.itemconfig(item, image=self.photo)
 
     def clip_to_pill(self, rad):
         x0, y0, x1, y1 = (round(v * self.S) for v in self.pill)
@@ -548,12 +560,12 @@ class Island:
         if self.cfg["battery"] == "Hide":
             pass
         elif self.plugged or self.battery is None:
-            c.create_text(x0 + 24, cy, text=G_BOLT, font=self.f_icon, fill=GREEN)
+            self.text(x0 + 24, cy, text=G_BOLT, font=self.f_icon, fill=GREEN)
         else:
             low = self.battery <= 20
-            c.create_text(x0 + 26, cy, text=f"{self.battery}%", font=self.f_small, fill="#ef4444" if low else DIM)
+            self.text(x0 + 26, cy, text=f"{self.battery}%", font=self.f_small, fill="#ef4444" if low else FG)
         text = self.fit(self.collapsed_text(now), self.f_text, self.w - 110)
-        c.create_text(x0 + self.w / 2, cy, text=text, font=self.f_text, fill=FG)
+        self.text(x0 + self.w / 2, cy, text=text, font=self.f_text, fill=FG)
         st = self.jarvis.get("status", "idle")
         if st in STATUS_COLOR:
             pulse = 4 + 1.5 * math.sin(now * 6)
@@ -561,9 +573,9 @@ class Island:
         elif self.song:
             self.draw_bars(x1 - 30, cy, now)
         elif self.t_end or now < self.done_until:
-            c.create_text(x1 - 24, cy, text=G_TIMER, font=self.f_icon_s, fill="#f59e0b")
+            self.text(x1 - 24, cy, text=G_TIMER, font=self.f_icon_s, fill="#f59e0b")
         else:
-            c.create_text(x1 - 24, cy, text=G_CLOCK, font=self.f_icon_s, fill=DIM)
+            self.text(x1 - 24, cy, text=G_CLOCK, font=self.f_icon_s, fill=SOFT)
 
     def draw_bars(self, x, cy, now):
         for i in range(3):
@@ -571,25 +583,25 @@ class Island:
             self.c.create_rectangle(x + i * 5, cy - h, x + i * 5 + 3, cy + h, fill=self.accent(), outline="")
 
     def draw_expanded(self, x0, y0, now):
-        c, x1 = self.c, x0 + self.w
+        x1 = x0 + self.w
         tabs = [("media", G_MUSIC, "Now Playing"), ("timer", G_TIMER, "Timer"), ("launch", G_APPS, "Quick Launch"),
                 ("settings", G_GEAR, "Island Settings")]
         for i, (key, glyph, _) in enumerate(tabs):
             cx, cy = x0 + 40 + i * 40, y0 + 28
             if key == self.tab:
-                round_rect(c, cx - 16, cy - 15, cx + 16, cy + 15, 8, fill=HILITE, outline=HILITE)
-            c.create_text(cx, cy, text=glyph, font=self.f_icon, fill=FG if key == self.tab else DIM)
+                self.panel(cx - 16, cy - 15, cx + 16, cy + 15, 10, "hi")
+            self.text(cx, cy, text=glyph, font=self.f_icon, fill=FG if key == self.tab else SOFT)
             self.hit(cx - 16, cy - 15, cx + 16, cy + 15, lambda k=key: setattr(self, "tab", k))
         title = dict((k, t) for k, _, t in tabs)[self.tab]
-        c.create_text(x0 + self.w / 2, y0 + 28, text=title, font=self.f_small, fill=DIM)
+        self.text(x0 + self.w / 2, y0 + 28, text=spaced(title), font=self.f_label, fill=SOFT)
 
         # jarvis status dot + pin
         st = self.jarvis.get("status", "idle")
         col = STATUS_COLOR.get(st, "#ef4444" if st == "offline" else "#4b5563")
-        c.create_oval(x1 - 80, y0 + 24, x1 - 72, y0 + 32, fill=col, outline="")
+        self.panel(x1 - 80, y0 + 24, x1 - 72, y0 + 32, 4, "solid", col, glow=col if st in STATUS_COLOR else None)
         px, py = x1 - 40, y0 + 28
-        c.create_oval(px - 15, py - 15, px + 15, py + 15, fill=HILITE if self.pinned else "#16181d", outline="")
-        c.create_text(px, py, text=G_UNPIN if self.pinned else G_PIN, font=self.f_icon_s, fill=FG)
+        self.panel(px - 15, py - 15, px + 15, py + 15, 15, "hi" if self.pinned else "glass")
+        self.text(px, py, text=G_UNPIN if self.pinned else G_PIN, font=self.f_icon_s, fill=FG)
         self.hit(px - 15, py - 15, px + 15, py + 15, lambda: setattr(self, "pinned", not self.pinned))
 
         top = y0 + 52
@@ -597,127 +609,135 @@ class Island:
          "settings": self.draw_settings}[self.tab](x0, x1, top, now)
 
     def button(self, cx, cy, r, glyph, cb, filled=False, font=None):
-        self.c.create_oval(cx - r, cy - r, cx + r, cy + r, fill=FG if filled else HILITE, outline="")
-        self.c.create_text(cx, cy, text=glyph, font=font or self.f_icon, fill=BG if filled else FG)
+        if filled:
+            self.panel(cx - r, cy - r, cx + r, cy + r, r, "solid", FG, glow=FG)
+        else:
+            self.panel(cx - r, cy - r, cx + r, cy + r, r)
+        self.text(cx, cy, shadow=not filled, text=glyph, font=font or self.f_icon, fill=BG if filled else FG)
         self.hit(cx - r, cy - r, cx + r, cy + r, cb)
 
     def draw_media(self, x0, x1, top, now):
-        c, song, cy, playing = self.c, self.song or self.cur, top + 28, bool(self.song)
+        song, playing, acc = self.song or self.cur, bool(self.song), self.accent()
 
-        # badge
-        ring = GREEN if playing else DIM
-        c.create_oval(x0 + 30, cy - 26, x0 + 82, cy + 26, fill=BG, outline=ring, width=3)
-        c.create_text(x0 + 56, cy, text=G_BOLT if playing else G_MUSIC, font=self.f_title, fill=ring)
+        # cover tile (no album art available, so an accent gradient with a note)
+        self.panel(x0 + 24, top - 4, x0 + 124, top + 96, 18, "grad", BLUE, acc)
+        self.text(x0 + 74, top + 46, text=G_MUSIC, font=self.f_cover, fill=FG)
 
-        # title / artist / bars
+        # label / title / artist
+        tx = x0 + 146
+        if playing:
+            self.draw_bars(tx, top + 8, now)
+        self.text(tx + (20 if playing else 0), top + 8, anchor="w", font=self.f_label, fill=SOFT,
+                  text=spaced("PLAYING ON SPOTIFY" if playing else "SPOTIFY"))
         if song:
-            title, sub = self.fit(song[0], self.f_title, 180), self.fit(song[1], self.f_small, 150)
+            title, sub = self.fit(song[0], self.f_title, 280), self.fit(song[1], self.f_text, 280)
         else:
             title = "Nothing playing"
             sub = "Spotify is paused" if self.spotify_running else "Click play to open Spotify"
-        c.create_text(x0 + 96, cy - 11, anchor="w", text=title, font=self.f_title, fill=FG)
-        c.create_text(x0 + 96, cy + 13, anchor="w", text=sub, font=self.f_small, fill=DIM)
-        if playing:
-            self.draw_bars(x0 + 106 + self.f_small.measure(sub) / self.S, cy + 13, now)
+        self.text(tx, top + 33, anchor="w", text=title, font=self.f_title, fill=FG)
+        self.text(tx, top + 57, anchor="w", text=sub, font=self.f_text, fill=SOFT)
 
-        # source pill + quick-launch apps
-        round_rect(c, x0 + 294, cy - 15, x0 + 358, cy + 15, 15, fill=HILITE, outline=HILITE)
-        c.create_text(x0 + 326, cy, text="Spotify", font=self.f_small, fill=FG)
-        self.hit(x0 + 294, cy - 15, x0 + 358, cy + 15, lambda: self.launch("spotify"))
-        for i, name in enumerate(self.apps[:3]):
-            ax, col = x0 + 382 + i * 34, APP_COLORS[sum(map(ord, name)) % len(APP_COLORS)]
-            c.create_oval(ax - 14, cy - 14, ax + 14, cy + 14, fill=col, outline="")
-            c.create_text(ax, cy, text=name[:1].upper(), font=self.f_small, fill=FG)
-            self.hit(ax - 14, cy - 14, ax + 14, cy + 14, lambda n=name: self.launch(n))
+        # progress: gradient fill + glowing knob, times underneath
+        py, bx0, bx1, dur = top + 80, tx, x0 + 428, self.duration
+        self.panel(bx0, py - 2, bx1, py + 2, 2, "solid", (255, 255, 255, 46))
+        if dur:
+            kx = round(bx0 + (bx1 - bx0) * min(1.0, self.elapsed / dur))
+            if kx > bx0 + 4:
+                self.panel(bx0, py - 2, kx, py + 2, 2, "grad", BLUE, acc)
+            self.panel(kx - 6, py - 6, kx + 6, py + 6, 6, "solid", FG, glow=acc)
+        self.text(bx0, py + 16, anchor="w", text=fmt_secs(self.elapsed) if song else "--:--",
+                  font=self.f_small, fill=SOFT)
+        self.text(bx1, py + 16, anchor="e", text=f"-{fmt_secs(dur - self.elapsed)}" if dur else "--:--",
+                  font=self.f_small, fill=SOFT)
 
         # transport
+        cy = top + 26
         play = (lambda: media_key(VK_PLAY)) if self.spotify_running else (lambda: self.launch("spotify"))
-        self.button(x0 + 490, cy, 15, G_PREV, lambda: media_key(VK_PREV), font=self.f_icon_s)
-        c.create_oval(x0 + 510, cy - 19, x0 + 548, cy + 19, fill=self.accent(), outline="")
-        c.create_text(x0 + 529, cy, text=G_PAUSE if playing else G_PLAY, font=self.f_icon, fill=BG)
-        self.hit(x0 + 510, cy - 19, x0 + 548, cy + 19, play)
-        self.button(x0 + 568, cy, 15, G_NEXT, lambda: media_key(VK_NEXT), font=self.f_icon_s)
-        self.button(x0 + 604, cy, 15, G_STOP, lambda: media_key(VK_STOP), font=self.f_icon_s)
-        self.button(x0 + 640, cy, 15, G_VOL, lambda: media_key(VK_MUTE), font=self.f_icon_s)
+        self.button(x0 + 490, cy, 17, G_PREV, lambda: media_key(VK_PREV), font=self.f_icon_s)
+        self.button(x0 + 556, cy, 24, G_PAUSE if playing else G_PLAY, play, filled=True)
+        self.button(x0 + 622, cy, 17, G_NEXT, lambda: media_key(VK_NEXT), font=self.f_icon_s)
 
-        # progress
-        py, bx0, bx1, dur = top + 86, x0 + 76, x0 + 600, self.duration
-        c.create_text(x0 + 30, py, anchor="w", text=fmt_secs(self.elapsed) if song else "--:--",
-                      font=self.f_small, fill=FG)
-        c.create_text(x0 + 650, py, anchor="e", text=f"-{fmt_secs(dur - self.elapsed)}" if dur else "--:--",
-                      font=self.f_small, fill=FG)
-        c.create_line(bx0, py, bx1, py, fill=TRACK, width=4, capstyle="round")
-        if dur:
-            kx = bx0 + (bx1 - bx0) * min(1.0, self.elapsed / dur)
-            c.create_line(bx0, py, kx, py, fill=BLUE, width=4, capstyle="round")
-            round_rect(c, kx - 5, py - 10, kx + 5, py + 10, 5, fill=BLUE, outline=BLUE)
+        # dock: stop / mute | source | quick-launch apps
+        dy = top + 82
+        self.panel(x0 + 448, dy - 17, x0 + 668, dy + 17, 17)
+        for gx, glyph, vk in ((470, G_STOP, VK_STOP), (498, G_VOL, VK_MUTE)):
+            self.text(x0 + gx, dy, text=glyph, font=self.f_icon_s, fill=FG)
+            self.hit(x0 + gx - 12, dy - 14, x0 + gx + 12, dy + 14, lambda v=vk: media_key(v))
+        self.panel(x0 + 515, dy - 9, x0 + 516, dy + 9, 0, "solid", (255, 255, 255, 50))
+        self.text(x0 + 552, dy, text="Spotify", font=self.f_small, fill=FG)
+        self.hit(x0 + 528, dy - 14, x0 + 576, dy + 14, lambda: self.launch("spotify"))
+        for i, name in enumerate(self.apps[:3]):
+            ax, col = x0 + 598 + i * 24, APP_COLORS[sum(map(ord, name)) % len(APP_COLORS)]
+            self.panel(ax - 10, dy - 10, ax + 10, dy + 10, 10, "solid", col)
+            self.text(ax, dy, text=name[:1].upper(), font=self.f_label, fill=FG)
+            self.hit(ax - 11, dy - 11, ax + 11, dy + 11, lambda n=name: self.launch(n))
 
-        # synced lyrics
-        c.create_line(x0 + 672, top - 4, x0 + 672, top + 100, fill=HILITE)
-        lx, lw = x0 + 690, x1 - x0 - 710
+        # synced lyrics on their own glass card
+        self.panel(x0 + 688, top - 4, x1 - 20, top + 104, 18)
+        lx, lw = x0 + 708, x1 - x0 - 748
         if not song or self.cfg["lyrics"] == "Off":
+            self.text(lx, top + 50, anchor="w", font=self.f_small, fill=SOFT,
+                      text="Lyrics off" if song else "Lyrics show up here")
             return
         if not self.lyrics:
-            c.create_text(lx, top + 40, anchor="w", font=self.f_small, fill=DIM,
-                          text="Searching lyrics…" if self.lyrics is None else "No synced lyrics")
+            self.text(lx, top + 50, anchor="w", font=self.f_small, fill=SOFT,
+                      text="Searching lyrics…" if self.lyrics is None else "No synced lyrics")
             return
         i = bisect.bisect_right([t for t, _ in self.lyrics], self.elapsed) - 1
         for row, j in enumerate(range(i - 1, i + 3)):
             if 0 <= j < len(self.lyrics):
                 f = self.f_text if j == i else self.f_small
-                c.create_text(lx, top + 4 + row * 24, anchor="w", font=f,
-                              text=self.fit(self.lyrics[j][1] or "♪", f, lw),
-                              fill=self.accent() if j == i else ("#4b5563" if j < i else DIM))
+                self.text(lx, top + 14 + row * 24, anchor="w", font=f,
+                          text=self.fit(self.lyrics[j][1] or "♪", f, lw),
+                          fill=acc if j == i else (DIM if j < i else SOFT))
 
     def draw_settings(self, x0, x1, top, now):
         # 3 columns x 4 rows of "label  [value]"; left-click cycles forward, right-click back
-        c, col_w = self.c, (self.w - 48) / 3
+        col_w = (self.w - 48) / 3
         for n, (key, label, _) in enumerate(SETTINGS):
             lx, cy = x0 + 24 + (n // 4) * col_w, top + 4 + (n % 4) * 27
             val = self.cfg[key]
-            c.create_text(lx + 6, cy, anchor="w", text=label, font=self.f_small, fill=DIM)
+            self.text(lx + 6, cy, anchor="w", text=label, font=self.f_small, fill=SOFT)
             cx1 = lx + col_w - 18
             cx0 = cx1 - max(64, self.f_small.measure(val) / self.S + 26)
-            round_rect(c, cx0, cy - 11, cx1, cy + 11, 11, fill=HILITE, outline=HILITE)
+            self.panel(cx0, cy - 11, cx1, cy + 11, 11)
             if key == "accent":
-                c.create_oval(cx0 + 8, cy - 4, cx0 + 16, cy + 4, fill=self.accent(), outline="")
+                self.panel(cx0 + 8, cy - 4, cx0 + 16, cy + 4, 4, "solid", self.accent(), glow=self.accent())
             on = val in ("On", "Show") or key == "accent"
-            c.create_text((cx0 + cx1) / 2 + (5 if key == "accent" else 0), cy, text=val, font=self.f_small,
-                          fill=self.accent() if on else FG)
+            self.text((cx0 + cx1) / 2 + (5 if key == "accent" else 0), cy, text=val, font=self.f_small,
+                      fill=self.accent() if on else FG)
             self.hit(cx0, cy - 11, cx1, cy + 11, lambda k=key: self.cycle_setting(k))
             self.hit(cx0, cy - 11, cx1, cy + 11, lambda k=key: self.cycle_setting(k, -1), button=1)
 
     def draw_timer(self, x0, x1, top, now):
-        c, cy = self.c, top + 42
+        cy = top + 42
         done = now < self.done_until
-        c.create_text(x0 + 32, cy, anchor="w", text="Time's up!" if done else fmt_secs(self.remaining(now)),
-                      font=self.f_big, fill="#f59e0b" if done or self.t_end else FG)
+        self.text(x0 + 32, cy, anchor="w", text="Time's up!" if done else fmt_secs(self.remaining(now)),
+                  font=self.f_big, fill="#f59e0b" if done or self.t_end else FG)
         bx = x1 - 290
         for label, secs in (("+1 min", 60), ("+5 min", 300)):
-            round_rect(c, bx, cy - 17, bx + 64, cy + 17, 17, fill=HILITE, outline=HILITE)
-            c.create_text(bx + 32, cy, text=label, font=self.f_small, fill=FG)
+            self.panel(bx, cy - 17, bx + 64, cy + 17, 17)
+            self.text(bx + 32, cy, text=label, font=self.f_small, fill=FG)
             self.hit(bx, cy - 17, bx + 64, cy + 17, lambda s=secs: self.timer_add(s))
             bx += 74
         self.button(bx + 22, cy, 22, G_PAUSE if self.t_end else G_PLAY, self.timer_toggle, filled=True)
         self.button(bx + 74, cy, 18, G_RESET, self.timer_reset)
 
     def draw_launch(self, x0, x1, top, now):
-        c, cy = self.c, top + 36
+        cy = top + 36
         max_apps = int((self.w - 100) // 60)
         for i, name in enumerate(self.apps[:max_apps]):
             cx = x0 + 52 + i * 60
             col = APP_COLORS[sum(map(ord, name)) % len(APP_COLORS)]
-            c.create_oval(cx - 22, cy - 22, cx + 22, cy + 22, fill=col, outline="")
-            c.create_text(cx, cy, text=name[:1].upper(), font=self.f_title, fill=FG)
-            c.create_text(cx, cy + 36, text=self.fit(name, self.f_small, 56), font=self.f_small, fill=DIM)
+            self.panel(cx - 22, cy - 22, cx + 22, cy + 22, 22, "solid", col)
+            self.text(cx, cy, text=name[:1].upper(), font=self.f_title, fill=FG)
+            self.text(cx, cy + 36, text=self.fit(name, self.f_small, 56), font=self.f_small, fill=SOFT)
             self.hit(cx - 22, cy - 22, cx + 22, cy + 22, lambda n=name: self.launch(n))
             self.hit(cx - 22, cy - 22, cx + 22, cy + 22, lambda n=name: self.remove_app(n), button=1)
         cx = x0 + 52 + min(len(self.apps), max_apps) * 60
         if len(self.apps) < max_apps:
             self.button(cx, cy, 22, G_ADD, lambda: self.root.after(1, self.add_app))
-        c.create_text(x1 - 28, top + 80, anchor="e", text="right-click an app to remove",
-                      font=self.f_small, fill="#4b5563")
-
+        self.text(x1 - 28, top + 80, anchor="e", text="right-click an app to remove", font=self.f_small, fill=DIM)
 
 def _selftest():
     cfg = load_settings({"glass": "Off", "accent": "Neon", "bogus": 1})
@@ -731,6 +751,11 @@ def _selftest():
     assert clean_title("Song - Remastered 2011") == "Song"
     assert parse_lrc("[01:02.50] hello\n[00:03.00]x\nnoise") == [(62.5, "hello"), (3.0, "x")]
     assert fmt_secs(65) == "01:05" and fmt_secs(3600) == "1:00:00" and fmt_secs(0.2) == "00:01"
+    g = glass_image(Image.new("RGB", (200, 60), (255, 255, 255)), (10, 10, 190, 50), 20, 1.0,
+                    [("solid", (40, 20, 60, 40), 10, "#ff0000", None, "#ff0000")], "#5eead4")
+    assert g.size == (180, 40)
+    assert g.getpixel((90, 20))[0] < 230                       # scrim darkens inside
+    assert g.getpixel((40, 20))[:3] == (255, 0, 0)             # solid panel drawn
     print("selftest ok")
 
 
