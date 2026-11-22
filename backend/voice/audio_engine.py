@@ -93,7 +93,9 @@ def listen(timeout=6, phrase_limit=8):
 
 def _recognize(audio):
     """Google speech-to-text in the configured accent (en-IN by default)."""
-    return sr.Recognizer().recognize_google(audio, language=config.LANGUAGE).lower()
+    r = sr.Recognizer()
+    r.operation_timeout = 8   # no timeout = one network stall freezes the mic loop forever
+    return r.recognize_google(audio, language=config.LANGUAGE).lower()
 
 def _rms(data):
     return float(np.abs(np.frombuffer(data, dtype=np.int16)).mean())
