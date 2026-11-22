@@ -9,6 +9,7 @@ Standalone:  .venv\\Scripts\\python.exe -m ui.dynamic_island
 Self-check:  .venv\\Scripts\\python.exe -m ui.dynamic_island --selftest
 """
 import bisect
+import io
 import ctypes
 import json
 import math
@@ -44,6 +45,7 @@ WIN_W, WIN_H = 980, 190          # logical px; real window is scaled by DPI
 EXP_W, MEDIA_W, EXP_H, COL_H = 560, 940, 170, 38
 BLUE = "#3b82f6"
 LYRICS_URL = "https://lrclib.net/api/search?"
+ART_URL = "https://itunes.apple.com/search?"
 
 # Settings tab: (key, label, options); the first option is the default. Click a chip to cycle.
 ACCENTS = {"Teal": "#5eead4", "Blue": "#60a5fa", "Purple": "#c084fc", "Pink": "#f472b6",
@@ -236,7 +238,10 @@ def glass_image(base, pill, rad, S, panels, accent):
             ImageDraw.Draw(patch).rounded_rectangle((g, g, g + bw, g + bh), rr, fill=rgba(glow, 120))
             put(out, patch.filter(ImageFilter.GaussianBlur(g / 2.5)), px - g, py - g)
         mask = aa_round(bw, bh, rr)
-        if style == "grad":
+        if style == "img":   # col is a PIL image (album art)
+            im = (col if col.size == (bw, bh) else col.resize((bw, bh), Image.LANCZOS)).convert("RGBA")
+            im.putalpha(mask)
+        elif style == "grad":
             im = Image.composite(Image.new("RGBA", (bw, bh), rgba(col2)), Image.new("RGBA", (bw, bh), rgba(col)),
                                  HRAMP.resize((bw, bh)))
             im.putalpha(mask)
@@ -284,7 +289,7 @@ class Island:
         # live data (written by poll thread)
         self.jarvis, self.song, self.spotify_running = {}, None, False
         # current track; elapsed is counted locally while Spotify's title says it's playing
-        self.cur, self.elapsed, self.duration, self.lyrics = None, 0.0, 0, None
+        self.cur, self.elapsed, self.duration, self.lyrics, self.art = None, 0.0, 0, None, None
         self.auto_until, self.last_tick = 0.0, time.time()
         self.plugged, self.battery = False, None
         # ui state
@@ -374,11 +379,12 @@ class Island:
         if not self.song:
             return
         if self.song != self.cur:
-            self.cur, self.elapsed, self.duration, self.lyrics = self.song, 0.0, 0, None
+            self.cur, self.elapsed, self.duration, self.lyrics, self.art = self.song, 0.0, 0, None, None
             self.auto_until = now + AUTO_OPEN[self.cfg["auto_open"]]
             if self.auto_until > now:
                 self.tab = "media"
             threading.Thread(target=self.fetch_lyrics, args=(self.song,), daemon=True).start()
+            threading.Thread(target=self.fetch_art, args=(self.song,), daemon=True).start()
         else:
             self.elapsed += dt
 
@@ -399,6 +405,28 @@ class Island:
         if self.cur == song:
             self.duration = hit.get("duration") or 0
             self.lyrics = parse_lrc(hit.get("syncedLyrics") or "")
+
+    def fetch_art(self, song):
+        # ponytail: iTunes search by title+artist; a wrong/missing match falls back to the note tile.
+        # Exact art would need winrt GlobalSystemMediaTransportControls thumbnails.
+        artist = song[1].split(",")[0].strip()
+        # full title first (keeps the film name: "The Wild Theme" exists in several films), then the short one
+        terms = (re.sub(r'[()\[\]"]', " ", song[0]) + " " + artist, clean_title(song[0]) + " " + artist)
+        try:
+            for term in terms:
+                q = urllib.parse.urlencode({"term": term, "entity": "song", "limit": 1})
+                with urllib.request.urlopen(ART_URL + q, timeout=6) as resp:
+                    hits = json.load(resp)["results"]
+                if hits:
+                    break
+            url = hits[0]["artworkUrl100"].replace("100x100bb", "300x300bb")
+            with urllib.request.urlopen(url, timeout=6) as resp:
+                art = Image.open(io.BytesIO(resp.read())).convert("RGB")
+            side = round(100 * self.S)
+            if self.cur == song:
+                self.art = art.resize((side, side), Image.LANCZOS)
+        except Exception:
+            pass
 
     # timer
     def remaining(self, now):
@@ -633,9 +661,12 @@ class Island:
     def draw_media(self, x0, x1, top, now):
         song, playing, acc = self.song or self.cur, bool(self.song), self.accent()
 
-        # cover tile (no album art available, so an accent gradient with a note)
-        self.panel(x0 + 24, top - 4, x0 + 124, top + 96, 18, "grad", BLUE, acc)
-        self.text(x0 + 74, top + 46, text=G_MUSIC, font=self.f_cover, fill=FG)
+        # cover: album art if fetched, else an accent gradient with a note
+        if self.art is not None:
+            self.panel(x0 + 24, top - 4, x0 + 124, top + 96, 18, "img", self.art)
+        else:
+            self.panel(x0 + 24, top - 4, x0 + 124, top + 96, 18, "grad", BLUE, acc)
+            self.text(x0 + 74, top + 46, text=G_MUSIC, font=self.f_cover, fill=FG)
 
         # label / title / artist
         tx = x0 + 146
