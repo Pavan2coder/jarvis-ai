@@ -186,8 +186,8 @@ class AudioEngine:
         self.last_edge = 0.0
         self.prev_loud = False
         
-        # chunks of silence that mark the end of a phrase (~0.7s)
-        self.silence_chunks = max(6, int(0.7 * config.SAMPLE_RATE / config.CHUNK))
+        # chunks of silence that mark the end of a phrase (~1.1s — 0.7 cut people off mid-sentence)
+        self.silence_chunks = max(6, int(1.1 * config.SAMPLE_RATE / config.CHUNK))
         self.start_chunks = max(1, int(config.SAMPLE_RATE / config.CHUNK))   # ~1s to start
         self.preroll_chunks = max(2, int(0.3 * config.SAMPLE_RATE / config.CHUNK))  # ~0.3s
 
@@ -435,7 +435,7 @@ class AudioEngine:
                 "Online. What do you need?",
             ]))
             self._flush()                              # drop echo of the greeting
-            command = self.capture_phrase(start_timeout=6, max_seconds=9)
+            command = self.capture_phrase(start_timeout=6, max_seconds=12)
             if command:
                 print(f"  👤 You » {command}")
                 ui_server.set_ui("thinking", message="Processing...", command=command)
@@ -469,7 +469,7 @@ class AudioEngine:
         print("  ⌨️   Or press ENTER in this window to type a command (works without a mic).\n")
         frames, recording, silent = [], False, 0
         pre = deque(maxlen=self.preroll_chunks)
-        max_phrase = int(5 * config.SAMPLE_RATE / config.CHUNK)
+        max_phrase = int(10 * config.SAMPLE_RATE / config.CHUNK)
         while not shutdown_manager.is_shutting_down():
             try:
                 # Flush the mic buffer when the worker signals it (echo suppression
@@ -483,6 +483,7 @@ class AudioEngine:
                     time.sleep(0.05)
                     continue
                 raw_data, cleaned_data, vol, peak, cleaned_vol, cleaned_peak = self._read()
+
 
                 # Dynamic Ambient Noise Floor Tracking & Hysteresis VAD Adjustments
                 # Only update background ambient estimates during quiet, non-triggering times
