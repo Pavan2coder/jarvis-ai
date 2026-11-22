@@ -770,6 +770,12 @@ def _selftest():
     assert g.size == (180, 40)
     assert g.getpixel((90, 20))[0] < 230                       # scrim darkens inside
     assert g.getpixel((40, 20))[:3] == (255, 0, 0)             # solid panel drawn
+    x, v, t = 38.0, 0.0, 0.0
+    while t < 0.6:                                             # spring: reaches target, no overshoot
+        x, v = spring(x, v, 170.0, 1 / 60)
+        assert x <= 170.0
+        t += 1 / 60
+    assert abs(x - 170.0) < 0.5, x
     print("selftest ok")
 
 
