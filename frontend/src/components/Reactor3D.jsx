@@ -3,6 +3,55 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
+// ── Neural-network "brain" core ────────────────────────────────────────────
+// Nodes fill two hemispheres (biased to the surface, like a cortex), each node
+// links to its nearest neighbours, and signal pulses hop node→node along links.
+const NODE_COUNT = 170;
+const LINKS_PER_NODE = 3;
+const MAX_LINK_DIST = 0.55;
+const PULSE_COUNT = 45;
+const PULSE_SPEED = { idle: 0.6, active: 2.2, listening: 1.6, thinking: 3.2, speaking: 1.8 };
+
+const buildBrain = () => {
+  const nodes = [];
+  while (nodes.length < NODE_COUNT) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
+    const r = 0.6 + 0.4 * Math.random();            // shell-biased → cortex look
+    const sq = Math.sqrt(1 - u * u);
+    let x = sq * Math.cos(th) * r, y = u * r, z = sq * Math.sin(th) * r;
+    x *= 1.15; y *= 0.8; z *= 0.95;                  // brain proportions (wide, flatter)
+    if (Math.abs(x) < 0.07) continue;                // fissure between hemispheres
+    if (y < -0.45 && Math.abs(z) > 0.6) continue;    // trim the underside a little
+    nodes.push(new THREE.Vector3(x + Math.sign(x) * 0.05, y, z));
+  }
+  const edges = [];
+  const adj = nodes.map(() => []);
+  const seen = new Set();
+  nodes.forEach((a, i) => {
+    nodes
+      .map((b, j) => [j, a.distanceTo(b)])
+      .filter(([j, d]) => j !== i && d < MAX_LINK_DIST)
+      .sort((p, q) => p[1] - q[1])
+      .slice(0, LINKS_PER_NODE)
+      .forEach(([j]) => {
+        const key = i < j ? `${i}-${j}` : `${j}-${i}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        edges.push([i, j]);
+        adj[i].push(j); adj[j].push(i);
+      });
+  });
+  // Each pulse travels from node `from` to node `to`; on arrival it hops to a random neighbour.
+  const pulses = Array.from({ length: PULSE_COUNT }, () => {
+    const [from, to] = edges[Math.floor(Math.random() * edges.length)];
+    return { from, to, t: Math.random() };
+  });
+  return { nodes, edges, adj, pulses };
+};
+
+// Built once at load: random layout must not regenerate on re-render.
+const BRAIN = buildBrain();
+
 const ReactorScene = ({ theme, status }) => {
   const outerRingRef = useRef();
   const middleRingRef = useRef();
