@@ -50,6 +50,20 @@ const buildBrain = () => {
   return { nodes, edges, adj, pulses };
 };
 
+// Round soft dot sprite so points render as glowing neurons, not squares.
+const DOT = (() => {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.35, 'rgba(255,255,255,0.8)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+})();
+
 // Built once at load: random layout must not regenerate on re-render.
 const BRAIN = buildBrain();
 
@@ -114,7 +128,7 @@ const NeuralBrain = ({ color, status }) => {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[nodePositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial ref={nodeMatRef} color={color} size={0.08} sizeAttenuation transparent opacity={0.9} toneMapped={false} />
+        <pointsMaterial ref={nodeMatRef} color={color} size={0.14} map={DOT} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation transparent opacity={0.9} toneMapped={false} />
       </points>
 
       {/* Signals firing along synapses */}
@@ -122,7 +136,7 @@ const NeuralBrain = ({ color, status }) => {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[pulsePositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#ffffff" size={0.13} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
+        <pointsMaterial color="#ffffff" size={0.22} map={DOT} depthWrite={false} blending={THREE.AdditiveBlending} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
       </points>
 
       {/* Soft inner glow */}
