@@ -211,6 +211,7 @@ body::after {
 }
 
 .status { text-align: center; }
+.hint { font-family: 'Share Tech Mono'; font-size: .6rem; letter-spacing: 4px; opacity: .45; margin-top: -8px; }
 .status .lab { font-size: .62rem; letter-spacing: 5px; opacity: .45; font-family: 'Share Tech Mono'; }
 .status .big {
   font-family: 'Orbitron'; font-weight: 700; font-size: 1.5rem; letter-spacing: 6px;

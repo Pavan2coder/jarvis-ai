@@ -12,13 +12,6 @@ const STATE_LABELS = {
   speaking: 'RESPONDING'
 };
 
-const REACTOR_TEXTS = {
-  idle: 'JARVIS',
-  active: 'AWAKE',
-  listening: 'HEAR',
-  thinking: 'THINK',
-  speaking: 'SPEAK'
-};
 
 const ReactorWidget = () => {
   const { uiState, theme, badgeText, showBadge, addLog } = useHud();
@@ -37,9 +30,6 @@ const ReactorWidget = () => {
     <main className="center">
       <div className="reactor">
         <Reactor3D theme={theme} status={uiState.status} onActivate={handleActivate} />
-        <div className="rtext" style={{ textShadow: `0 0 18px var(--blue)` }}>
-          {REACTOR_TEXTS[uiState.status || 'idle']}
-        </div>
       </div>
       <div className={`badge ${showBadge ? 'show' : ''}`}>{badgeText}</div>
       <div className="status">
@@ -53,6 +43,7 @@ const ReactorWidget = () => {
           />
         </div>
       </div>
+      <div className="hint">{(uiState.status || 'idle') === 'idle' ? 'TAP THE CORE TO ACTIVATE' : ' '}</div>
       <div className="wave">
         {Array.from({ length: 40 }).map((_, i) => {
           const active = uiState.status === 'listening' || uiState.status === 'speaking';
