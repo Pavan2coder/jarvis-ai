@@ -67,7 +67,7 @@ const DOT = (() => {
 // Built once at load: random layout must not regenerate on re-render.
 const BRAIN = buildBrain();
 
-const NeuralBrain = ({ color, status }) => {
+const NeuralBrain = ({ color, status, onActivate }) => {
   const groupRef = useRef();
   const pulsePointsRef = useRef();
   const nodeMatRef = useRef();
@@ -145,8 +145,9 @@ const NeuralBrain = ({ color, status }) => {
         <meshBasicMaterial color={color} transparent opacity={hover ? 0.35 : 0.18} toneMapped={false} />
       </mesh>
 
-      {/* Invisible hit-area: glow on hover. */}
+      {/* Invisible hit-area: click the brain to wake Jarvis. delta = px moved, so orbit-drags don't count. */}
       <mesh
+        onClick={e => { e.stopPropagation(); if (e.delta < 6) onActivate?.(); }}
         onPointerOver={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
         onPointerOut={() => { setHover(false); document.body.style.cursor = ''; }}
       >
@@ -157,7 +158,7 @@ const NeuralBrain = ({ color, status }) => {
   );
 };
 
-const ReactorScene = ({ theme, status }) => {
+const ReactorScene = ({ theme, status, onActivate }) => {
   const scanCylinderRef = useRef();
   const hudRingRef1 = useRef();
   const hudRingRef2 = useRef();
@@ -208,7 +209,7 @@ const ReactorScene = ({ theme, status }) => {
 
   return (
     <group>
-      <NeuralBrain color={primaryColor} status={status} />
+      <NeuralBrain color={primaryColor} status={status} onActivate={onActivate} />
 
       {/* NEW: 3D Holographic Cylinder scanlines (spinning) */}
       <mesh ref={scanCylinderRef}>
@@ -312,13 +313,13 @@ const ReactorScene = ({ theme, status }) => {
   );
 };
 
-const Reactor3D = ({ theme, status }) => {
+const Reactor3D = ({ theme, status, onActivate }) => {
   return (
     <div style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
       <Canvas camera={{ position: [0, 0, 4.4], fov: 65 }}>
         <ambientLight intensity={0.6} />
         <pointLight position={[10, 10, 10]} intensity={1.8} />
-        <ReactorScene theme={theme} status={status} />
+        <ReactorScene theme={theme} status={status} onActivate={onActivate} />
         <OrbitControls enableZoom={true} enablePan={false} maxDistance={6.5} minDistance={2.2} />
       </Canvas>
     </div>
