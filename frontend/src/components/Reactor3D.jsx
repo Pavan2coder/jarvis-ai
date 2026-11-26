@@ -143,10 +143,6 @@ const NeuralBrain = ({ color, status }) => {
 };
 
 const ReactorScene = ({ theme, status }) => {
-  const outerRingRef = useRef();
-  const middleRingRef = useRef();
-  const innerRingRef = useRef();
-  const coreRef = useRef();
   const scanCylinderRef = useRef();
   const hudRingRef1 = useRef();
   const hudRingRef2 = useRef();
@@ -177,20 +173,6 @@ const ReactorScene = ({ theme, status }) => {
   useFrame(({ clock }) => {
     const elapsed = clock.getElapsedTime();
 
-    // Standard Rotations
-    if (outerRingRef.current) {
-      outerRingRef.current.rotation.y = elapsed * 0.45;
-      outerRingRef.current.rotation.z = elapsed * 0.15;
-    }
-    if (middleRingRef.current) {
-      middleRingRef.current.rotation.x = -elapsed * 0.6;
-      middleRingRef.current.rotation.y = elapsed * 0.2;
-    }
-    if (innerRingRef.current) {
-      innerRingRef.current.rotation.z = -elapsed * 0.9;
-      innerRingRef.current.rotation.x = elapsed * 0.35;
-    }
-
     // Rotations of HUD rings (flatter sci-fi dials)
     if (hudRingRef1.current) {
       hudRingRef1.current.rotation.z = elapsed * 0.3;
@@ -207,73 +189,11 @@ const ReactorScene = ({ theme, status }) => {
       scanCylinderRef.current.scale.set(1, scanPulse, 1);
     }
 
-    // Core pulsing scale based on status energy
-    if (coreRef.current) {
-      let pulseSpeed = 2.5;
-      let pulseAmount = 0.08;
-      
-      if (status === 'listening') {
-        pulseSpeed = 8.0;
-        pulseAmount = 0.25;
-      } else if (status === 'speaking') {
-        pulseSpeed = 6.0;
-        pulseAmount = 0.18;
-      } else if (status === 'thinking') {
-        pulseSpeed = 4.0;
-        pulseAmount = 0.05;
-      }
-      
-      const scaleVal = 1.0 + Math.sin(elapsed * pulseSpeed) * pulseAmount;
-      coreRef.current.scale.set(scaleVal, scaleVal, scaleVal);
-    }
   });
 
   return (
     <group>
-      {/* Outer Rotating Torus */}
-      <mesh ref={outerRingRef}>
-        <torusGeometry args={[2.0, 0.03, 16, 100]} />
-        <meshStandardMaterial 
-          color={primaryColor} 
-          emissive={primaryColor}
-          emissiveIntensity={1.8}
-          roughness={0.1}
-          metalness={0.9}
-        />
-      </mesh>
-
-      {/* Middle Rotating Torus */}
-      <mesh ref={middleRingRef}>
-        <torusGeometry args={[1.6, 0.03, 16, 100]} />
-        <meshStandardMaterial 
-          color={primaryColor} 
-          emissive={primaryColor}
-          emissiveIntensity={1.4}
-          roughness={0.1}
-          metalness={0.9}
-        />
-      </mesh>
-
-      {/* Inner Rotating Torus */}
-      <mesh ref={innerRingRef}>
-        <torusGeometry args={[1.2, 0.02, 12, 80]} />
-        <meshStandardMaterial 
-          color={primaryColor} 
-          emissive={primaryColor}
-          emissiveIntensity={1.1}
-          roughness={0.1}
-          metalness={0.9}
-        />
-      </mesh>
-
-      {/* Core Pulsating Sphere */}
-      <mesh ref={coreRef}>
-        <sphereGeometry args={[0.55, 32, 32]} />
-        <meshBasicMaterial 
-          color={primaryColor}
-          toneMapped={false}
-        />
-      </mesh>
+      <NeuralBrain color={primaryColor} status={status} />
 
       {/* NEW: 3D Holographic Cylinder scanlines (spinning) */}
       <mesh ref={scanCylinderRef}>
