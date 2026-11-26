@@ -203,7 +203,7 @@ body::after {
 
 /* Center Panel / Canvas */
 .center { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; position: relative; }
-.reactor { position: relative; width: 380px; height: 380px; display: flex; align-items: center; justify-content: center; }
+.reactor { position: relative; width: clamp(360px, 55vh, 600px); height: clamp(360px, 55vh, 600px); display: flex; align-items: center; justify-content: center; }
 .reactor-canvas { position: absolute; inset: 0; }
 .rtext {
   position: relative; z-index: 5; pointer-events: none; font-family: 'Orbitron'; font-weight: 700;
