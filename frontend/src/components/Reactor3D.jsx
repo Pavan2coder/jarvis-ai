@@ -9,7 +9,8 @@ import * as THREE from 'three';
 const NODE_COUNT = 170;
 const LINKS_PER_NODE = 3;
 const MAX_LINK_DIST = 0.55;
-const PULSE_COUNT = 45;
+const PULSE_COUNT = 60;
+const BRAIN_SCALE = 1.7;
 const PULSE_SPEED = { idle: 0.6, active: 2.2, listening: 1.6, thinking: 3.2, speaking: 1.8 };
 
 const buildBrain = () => {
@@ -76,7 +77,7 @@ const NeuralBrain = ({ color, status }) => {
       groupRef.current.rotation.y = t * 0.25;
       groupRef.current.rotation.x = Math.sin(t * 0.3) * 0.12;
       const beat = status === 'listening' ? 0.06 : status === 'speaking' ? 0.04 : 0.015;
-      const s = (hover ? 1.06 : 1) * (1 + Math.sin(t * (status === 'idle' ? 1.5 : 6)) * beat);
+      const s = BRAIN_SCALE * (hover ? 1.06 : 1) * (1 + Math.sin(t * (status === 'idle' ? 1.5 : 6)) * beat);
       groupRef.current.scale.setScalar(s);
     }
 
@@ -105,7 +106,7 @@ const NeuralBrain = ({ color, status }) => {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
         </bufferGeometry>
-        <lineBasicMaterial color={color} transparent opacity={hover ? 0.5 : 0.28} />
+        <lineBasicMaterial color={color} transparent opacity={hover ? 0.7 : 0.45} />
       </lineSegments>
 
       {/* Neurons */}
@@ -113,7 +114,7 @@ const NeuralBrain = ({ color, status }) => {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[nodePositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial ref={nodeMatRef} color={color} size={0.06} sizeAttenuation transparent opacity={0.9} toneMapped={false} />
+        <pointsMaterial ref={nodeMatRef} color={color} size={0.08} sizeAttenuation transparent opacity={0.9} toneMapped={false} />
       </points>
 
       {/* Signals firing along synapses */}
@@ -121,7 +122,7 @@ const NeuralBrain = ({ color, status }) => {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[pulsePositions, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#ffffff" size={0.09} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
+        <pointsMaterial color="#ffffff" size={0.13} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
       </points>
 
       {/* Soft inner glow */}
@@ -202,7 +203,7 @@ const ReactorScene = ({ theme, status }) => {
           color={primaryColor}
           wireframe={true}
           transparent={true}
-          opacity={0.15}
+          opacity={0.06}
           side={THREE.DoubleSide}
         />
       </mesh>
