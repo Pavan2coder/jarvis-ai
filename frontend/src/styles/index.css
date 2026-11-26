@@ -106,6 +106,8 @@ body::after {
   color: #fff; text-shadow: 0 0 18px var(--blue), 0 0 40px rgba(var(--glow-rgb), .35);
 }
 .brand b { color: var(--cyan); }
+.theme-bar { display: flex; gap: 6px; margin-left: 32px; margin-right: auto; }
+.theme-bar .theme-btn { padding: 5px 10px; }
 .topmeta { display: flex; gap: 30px; font-size: .74rem; letter-spacing: 2px; font-family: 'Share Tech Mono'; }
 .topmeta .k { opacity: .5; }
 .topmeta .v { color: #fff; }
