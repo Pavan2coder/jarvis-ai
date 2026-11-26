@@ -320,7 +320,7 @@ const Reactor3D = ({ theme, status, onActivate }) => {
         <ambientLight intensity={0.6} />
         <pointLight position={[10, 10, 10]} intensity={1.8} />
         <ReactorScene theme={theme} status={status} onActivate={onActivate} />
-        <OrbitControls enableZoom={true} enablePan={false} maxDistance={6.5} minDistance={2.2} />
+        <OrbitControls enableZoom={false} enablePan={false} />
       </Canvas>
     </div>
   );
