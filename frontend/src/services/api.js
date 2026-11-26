@@ -17,3 +17,9 @@ export const sendTerminalCommand = async (text) => {
   if (!res.ok) throw new Error('Failed to send terminal command');
   return res.json();
 };
+
+export const activateJarvis = async () => {
+  const res = await fetch(`${BASE_URL}/activate`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to activate');
+  return res.json();
+};
