@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -51,6 +51,96 @@ const buildBrain = () => {
 
 // Built once at load: random layout must not regenerate on re-render.
 const BRAIN = buildBrain();
+
+const NeuralBrain = ({ color, status }) => {
+  const groupRef = useRef();
+  const pulsePointsRef = useRef();
+  const nodeMatRef = useRef();
+  const [hover, setHover] = useState(false);
+
+  const { nodes, edges, adj, pulses } = BRAIN;
+
+  const nodePositions = useMemo(() => new Float32Array(nodes.flatMap(v => [v.x, v.y, v.z])), [nodes]);
+  const linePositions = useMemo(
+    () => new Float32Array(edges.flatMap(([a, b]) => [nodes[a].x, nodes[a].y, nodes[a].z, nodes[b].x, nodes[b].y, nodes[b].z])),
+    [nodes, edges]
+  );
+
+  const pulsePositions = useMemo(() => new Float32Array(PULSE_COUNT * 3), []);
+
+  useFrame(({ clock }, delta) => {
+    const t = clock.getElapsedTime();
+    const speed = (PULSE_SPEED[status] ?? PULSE_SPEED.idle) * (hover ? 1.6 : 1);
+
+    if (groupRef.current) {
+      groupRef.current.rotation.y = t * 0.25;
+      groupRef.current.rotation.x = Math.sin(t * 0.3) * 0.12;
+      const beat = status === 'listening' ? 0.06 : status === 'speaking' ? 0.04 : 0.015;
+      const s = (hover ? 1.06 : 1) * (1 + Math.sin(t * (status === 'idle' ? 1.5 : 6)) * beat);
+      groupRef.current.scale.setScalar(s);
+    }
+
+    pulses.forEach((p, k) => {
+      p.t += delta * speed * 1.4;
+      if (p.t >= 1) {
+        const next = adj[p.to];
+        p.from = p.to;
+        p.to = next.length ? next[Math.floor(Math.random() * next.length)] : p.from;
+        p.t = 0;
+      }
+      const a = nodes[p.from], b = nodes[p.to];
+      pulsePositions[k * 3] = a.x + (b.x - a.x) * p.t;
+      pulsePositions[k * 3 + 1] = a.y + (b.y - a.y) * p.t;
+      pulsePositions[k * 3 + 2] = a.z + (b.z - a.z) * p.t;
+    });
+    if (pulsePointsRef.current) pulsePointsRef.current.geometry.attributes.position.needsUpdate = true;
+
+    if (nodeMatRef.current) nodeMatRef.current.opacity = 0.75 + Math.sin(t * 3) * 0.2;
+  });
+
+  return (
+    <group ref={groupRef}>
+      {/* Synapses */}
+      <lineSegments>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[linePositions, 3]} />
+        </bufferGeometry>
+        <lineBasicMaterial color={color} transparent opacity={hover ? 0.5 : 0.28} />
+      </lineSegments>
+
+      {/* Neurons */}
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[nodePositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial ref={nodeMatRef} color={color} size={0.06} sizeAttenuation transparent opacity={0.9} toneMapped={false} />
+      </points>
+
+      {/* Signals firing along synapses */}
+      <points ref={pulsePointsRef}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[pulsePositions, 3]} />
+        </bufferGeometry>
+        <pointsMaterial color="#ffffff" size={0.09} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
+      </points>
+
+      {/* Soft inner glow */}
+      <mesh>
+        <sphereGeometry args={[0.35, 24, 24]} />
+        <meshBasicMaterial color={color} transparent opacity={hover ? 0.35 : 0.18} toneMapped={false} />
+      </mesh>
+
+      {/* Invisible hit-area: glow on hover. */}
+      <mesh
+        onPointerOver={() => { setHover(true); document.body.style.cursor = 'pointer'; }}
+        onPointerOut={() => { setHover(false); document.body.style.cursor = ''; }}
+      >
+        <sphereGeometry args={[1.25, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+};
 
 const ReactorScene = ({ theme, status }) => {
   const outerRingRef = useRef();
