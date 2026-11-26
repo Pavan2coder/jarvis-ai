@@ -151,7 +151,7 @@ body::after {
 }
 .ttl {
   font-family: 'Orbitron'; font-size: .6rem; letter-spacing: 3px; color: var(--blue);
-  opacity: .7; margin-bottom: 12px; text-transform: uppercase;
+  opacity: .7; margin-bottom: 6px; text-transform: uppercase;
 }
 
 /* Theme buttons */
@@ -266,11 +266,11 @@ body::after {
 .bottom .tick { white-space: nowrap; animation: scroll 28s linear infinite; }
 
 /* Corners */
-.cn { position: fixed; width: 46px; height: 46px; z-index: 40; pointer-events: none; transition: border-color 0.4s; }
-.cn.tl { top: 12px; left: 12px; border-top: 2px solid var(--blue); border-left: 2px solid var(--blue); }
-.cn.tr { top: 12px; right: 12px; border-top: 2px solid var(--blue); border-right: 2px solid var(--blue); }
-.cn.bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--blue); border-left: 2px solid var(--blue); }
-.cn.br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--blue); border-right: 2px solid var(--blue); }
+.cn { position: fixed; width: 22px; height: 22px; z-index: 40; pointer-events: none; transition: border-color 0.4s; }
+.cn.tl { top: 6px; left: 6px; border-top: 2px solid var(--blue); border-left: 2px solid var(--blue); }
+.cn.tr { top: 6px; right: 6px; border-top: 2px solid var(--blue); border-right: 2px solid var(--blue); }
+.cn.bl { bottom: 6px; left: 6px; border-bottom: 2px solid var(--blue); border-left: 2px solid var(--blue); }
+.cn.br { bottom: 6px; right: 6px; border-bottom: 2px solid var(--blue); border-right: 2px solid var(--blue); }
 
 /* Sci-fi decorations */
 .card-corner-line {
