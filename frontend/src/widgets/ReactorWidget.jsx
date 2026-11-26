@@ -2,6 +2,7 @@ import React from 'react';
 import { useHud } from '../hooks/useHud';
 import Reactor3D from '../components/Reactor3D';
 import DecryptedText from '../components/DecryptedText';
+import { activateJarvis } from '../services/api';
 
 const STATE_LABELS = {
   idle: 'STANDING BY',
@@ -20,12 +21,22 @@ const REACTOR_TEXTS = {
 };
 
 const ReactorWidget = () => {
-  const { uiState, theme, badgeText, showBadge } = useHud();
+  const { uiState, theme, badgeText, showBadge, addLog } = useHud();
+
+  const handleActivate = async () => {
+    addLog('Core touched — waking Jarvis…', 'var(--cyan)');
+    try {
+      const res = await activateJarvis();
+      if (res.status !== 'ok') addLog(res.message, 'var(--gold)');
+    } catch {
+      addLog('Core offline — start jarvis.py', 'var(--red)');
+    }
+  };
 
   return (
     <main className="center">
       <div className="reactor">
-        <Reactor3D theme={theme} status={uiState.status} />
+        <Reactor3D theme={theme} status={uiState.status} onActivate={handleActivate} />
         <div className="rtext" style={{ textShadow: `0 0 18px var(--blue)` }}>
           {REACTOR_TEXTS[uiState.status || 'idle']}
         </div>

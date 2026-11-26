@@ -206,7 +206,7 @@ body::after {
 .reactor { position: relative; width: 380px; height: 380px; display: flex; align-items: center; justify-content: center; }
 .reactor-canvas { position: absolute; inset: 0; }
 .rtext {
-  position: relative; z-index: 5; font-family: 'Orbitron'; font-weight: 700;
+  position: relative; z-index: 5; pointer-events: none; font-family: 'Orbitron'; font-weight: 700;
   font-size: .8rem; letter-spacing: 4px; color: #fff; text-shadow: 0 0 18px var(--blue);
 }
 
