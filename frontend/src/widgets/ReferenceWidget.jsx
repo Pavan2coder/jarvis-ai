@@ -4,7 +4,7 @@ import DecryptedText from '../components/DecryptedText';
 
 const ReferenceWidget = () => {
   return (
-    <GlowCard grow>
+    <GlowCard>
       <div className="ttl">
         <DecryptedText text="// Command Reference" animateOn="hover" />
       </div>
