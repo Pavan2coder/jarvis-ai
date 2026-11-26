@@ -84,7 +84,7 @@ const HudLayout = () => {
           <VitalsWidget />
           <ModulesWidget />
           <GestureWidget />
-          <LogWidget />
+          <NetworkWidget />
         </aside>
 
         {/* CENTER PANEL */}
@@ -93,8 +93,8 @@ const HudLayout = () => {
         {/* RIGHT PANEL */}
         <aside className="panel">
           <ConsoleWidget />
+          <LogWidget />
           <ReferenceWidget />
-          <NetworkWidget />
         </aside>
 
         {/* BOTTOM TICKER */}
