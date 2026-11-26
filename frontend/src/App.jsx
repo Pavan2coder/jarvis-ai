@@ -33,6 +33,7 @@ const HudLayout = () => {
           <div className="brand">
             <span className="shiny-text">J.A.R.V.I.<b>S</b></span>
           </div>
+          <ThemeSelectorWidget />
           <div className="topmeta">
             <span>
               <span className="k">TIME</span>{' '}
@@ -81,7 +82,6 @@ const HudLayout = () => {
         {/* LEFT PANEL */}
         <aside className="panel">
           <VitalsWidget />
-          <ThemeSelectorWidget />
           <ModulesWidget />
           <GestureWidget />
           <LogWidget />
