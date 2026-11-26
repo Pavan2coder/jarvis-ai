@@ -297,3 +297,14 @@ body::after {
   0% { background-position: 200% center; }
   100% { background-position: -200% center; }
 }
+
+/* Short screens (laptops ≤ 820px tall): tighten spacing so panels fit without scrolling */
+@media (max-height: 820px) {
+  .hud { gap: 10px; padding: 12px 24px; grid-template-rows: 48px 1fr 30px; }
+  .panel { gap: 10px; }
+  .card { padding: 10px 12px; }
+  .ttl { margin-bottom: 8px; }
+  .bubble { padding: 6px 10px; margin-bottom: 6px; }
+  .mod { padding: 1px 0; }
+  .gauge svg.radial-gauge { width: 60px; height: 60px; }
+}
