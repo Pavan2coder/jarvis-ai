@@ -89,7 +89,7 @@ graph TD
 For a detailed breakdown of modules, threading logic, and network flows, see [architecture.md](docs/architecture.md).
 
 ---
-
+good
 ## 🧩 Recent Architecture Enhancements
 
 Recent work hardened the vision stack and laid the groundwork for a plugin-based command system. All changes are backward compatible — existing gesture, voice, and command behaviour is preserved.
